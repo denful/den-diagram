@@ -1,8 +1,8 @@
 # den-diagram standalone tests.
 #
-# Feed pre-built trace entries to gram functions and verify output.
+# Feed pre-built trace entries to diagram functions and verify output.
 # No den dependency — tests exercise the library in isolation.
-{ lib, gram }:
+{ lib, diagram }:
 let
   # Minimal trace entry matching the shape buildGraph / mkNode reads.
   # Fields mirror graph.nix's stubEntry plus the extras mkNode accesses.
@@ -54,7 +54,7 @@ let
 in
 {
   context = {
-    # gram.context builds a graph IR from trace entries
+    # diagram.context builds a graph IR from trace entries
     test-basic-context =
       let
         entries = [
@@ -66,7 +66,7 @@ in
           })
           (mkEntry { name = "root"; })
         ];
-        graph = gram.context {
+        graph = diagram.context {
           inherit entries;
           name = "testhost";
         };
@@ -113,7 +113,7 @@ in
             handlers = [ { type = "exclude"; } ];
           })
         ];
-        graph = gram.context {
+        graph = diagram.context {
           inherit entries;
           name = "testhost";
         };
@@ -146,7 +146,7 @@ in
         pbc = {
           nixos = [ [ "root" ] ];
         };
-        graph = gram.context {
+        graph = diagram.context {
           inherit entries;
           name = "root";
           pathsByClass = pbc;
@@ -169,7 +169,7 @@ in
             hasClass = true;
           })
         ];
-        g = gram.graph.build {
+        g = diagram.graph.build {
           inherit entries;
           rootName = "root";
         };
@@ -199,7 +199,7 @@ in
             hasClass = true;
           })
         ];
-        g = gram.graph.build {
+        g = diagram.graph.build {
           inherit entries;
           rootName = "root";
         };
@@ -235,7 +235,7 @@ in
             hasClass = true;
           })
         ];
-        g = gram.graph.build {
+        g = diagram.graph.build {
           inherit entries;
           rootName = "root";
         };
@@ -269,7 +269,7 @@ in
             parent = "excluded-parent";
           })
         ];
-        g = gram.graph.build {
+        g = diagram.graph.build {
           inherit entries;
           rootName = "root";
         };
@@ -310,7 +310,7 @@ in
             };
           };
         };
-        result = gram.fleet.of {
+        result = diagram.fleet.of {
           inherit hosts;
           flakeName = "test-fleet";
         };
@@ -349,7 +349,7 @@ in
             };
           };
         };
-        result = gram.fleet.of {
+        result = diagram.fleet.of {
           inherit hosts;
           flakeName = "labels";
         };
@@ -379,7 +379,7 @@ in
             };
           };
         };
-        result = gram.fleet.of {
+        result = diagram.fleet.of {
           inherit hosts;
           flakeName = "no-users";
         };
@@ -414,7 +414,7 @@ in
             includes = [ { name = "networking"; } ];
           };
         };
-        g = gram.graph.ofNamespace {
+        g = diagram.graph.ofNamespace {
           inherit aspects;
         };
       in
@@ -446,7 +446,7 @@ in
             includes = [ ];
           };
         };
-        g = gram.graph.ofNamespace {
+        g = diagram.graph.ofNamespace {
           inherit aspects;
           filter = v: v.name == "keep";
         };
@@ -479,7 +479,7 @@ in
             ];
           };
         };
-        g = gram.graph.ofNamespace {
+        g = diagram.graph.ofNamespace {
           inherit aspects;
         };
         # Edges: root->c (not included by anyone), b->a, c->a, c->b

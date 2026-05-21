@@ -227,7 +227,7 @@ let
 
     # Fleet-level views — namespace view removed since it requires aspects
     # data that doesn't flow through renderContext. Consumers that want
-    # namespace views call gram.graph.ofNamespace { aspects = ...; } directly.
+    # namespace views call diagram.graph.ofNamespace { aspects = ...; } directly.
     fleet =
       {
         render,

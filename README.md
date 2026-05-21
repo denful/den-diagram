@@ -64,7 +64,7 @@ inputs.den-diagram.url = "github:denful/den-diagram";
 ### Two-step pattern: capture in den, render in den-diagram
 
 ```nix
-gram = inputs.den-diagram.lib;
+diagram = inputs.den-diagram.lib;
 
 # 1. Capture — runs in den, produces trace data
 captured = den.lib.capture.captureWithPathsWith {
@@ -74,41 +74,41 @@ captured = den.lib.capture.captureWithPathsWith {
 };
 
 # 2. Graph — builds format-agnostic IR from trace entries
-g = gram.context {
+g = diagram.context {
   entries = captured.entries;
   ctxTrace = captured.ctxTrace;
   name = host.name;
 };
 
 # 3. Render — emit diagram source in any supported format
-rendered = gram.toMermaid g;
+rendered = diagram.toMermaid g;
 ```
 
 ### Fleet graphs
 
 ```nix
-fleetData = gram.fleet.of {
+fleetData = diagram.fleet.of {
   hosts = den.hosts;
   flakeName = "my-fleet";
 };
-gram.toC4Context fleetData;
+diagram.toC4Context fleetData;
 ```
 
 ### Namespace graph (static aspect declarations)
 
 ```nix
-g = gram.graph.ofNamespace { aspects = den.aspects; };
-gram.toMermaid g;
+g = diagram.graph.ofNamespace { aspects = den.aspects; };
+diagram.toMermaid g;
 ```
 
 ### Render context (SVG pipeline with mermaid-cli)
 
 ```nix
-rc = gram.renderContext {
+rc = diagram.renderContext {
   inherit pkgs;
-  theme = gram.themeFromBase16 { inherit pkgs; scheme = "catppuccin-mocha"; };
+  theme = diagram.themeFromBase16 { inherit pkgs; scheme = "catppuccin-mocha"; };
 };
-svg = rc.mmdSourceToSvg "my-diagram" (gram.toMermaid g);
+svg = rc.mmdSourceToSvg "my-diagram" (diagram.toMermaid g);
 ```
 
 ## Renderers
@@ -136,13 +136,13 @@ Each renderer has a `*With` variant accepting `{ theme, mermaidConfig }` for cus
 ## Graph filters
 
 ```nix
-gram.graph.aspectsOnly g;         # aspect hierarchy only
-gram.graph.providersOnly g;       # provider tree
-gram.graph.contextOnly g;         # context scopes
-gram.graph.simplified g;          # fold providers
-gram.graph.classSlice "nixos" g;  # single class
-gram.graph.diffClasses g;         # class comparison
-gram.graph.filterUserAspects g;   # user-declared only
+diagram.graph.aspectsOnly g;         # aspect hierarchy only
+diagram.graph.providersOnly g;       # provider tree
+diagram.graph.contextOnly g;         # context scopes
+diagram.graph.simplified g;          # fold providers
+diagram.graph.classSlice "nixos" g;  # single class
+diagram.graph.diffClasses g;         # class comparison
+diagram.graph.filterUserAspects g;   # user-declared only
 ```
 
 ## Dependency model

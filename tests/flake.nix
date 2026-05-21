@@ -10,9 +10,9 @@
     { nixpkgs, den-diagram, ... }:
     let
       inherit (nixpkgs) lib;
-      gram = den-diagram.lib;
+      diagram = den-diagram.lib;
     in
     {
-      tests = import ./tests.nix { inherit lib gram; };
+      tests = import ./tests.nix { inherit lib diagram; };
     };
 }
