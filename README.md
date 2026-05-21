@@ -1,3 +1,10 @@
+<p align="right">
+  <a href="https://github.com/denful/den"><img src="https://img.shields.io/badge/Dendritic-Nix-informational?logo=nixos&logoColor=white" alt="Dendritic Nix"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/denful/den-diagram" alt="License"/></a>
+</p>
+
+> by [sini](https://github.com/sini) — part of the [dendritic](https://denful.dev) ecosystem
+
 # den-diagram
 
 Diagram library for [den](https://github.com/denful/den) — graph IR construction, filtering, and multi-format rendering of aspect-resolution pipelines.
