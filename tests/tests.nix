@@ -1,4 +1,4 @@
-# den-gram standalone tests.
+# den-diagram standalone tests.
 #
 # Feed pre-built trace entries to gram functions and verify output.
 # No den dependency — tests exercise the library in isolation.

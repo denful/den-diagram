@@ -1,16 +1,16 @@
 {
-  description = "den-gram tests";
+  description = "den-diagram tests";
 
   inputs = {
     nixpkgs.url = "https://channels.nixos.org/nixpkgs-unstable/nixexprs.tar.xz";
-    den-gram.url = "path:..";
+    den-diagram.url = "path:..";
   };
 
   outputs =
-    { nixpkgs, den-gram, ... }:
+    { nixpkgs, den-diagram, ... }:
     let
       lib = nixpkgs.lib;
-      gram = den-gram.lib;
+      gram = den-diagram.lib;
     in
     {
       tests = import ./tests.nix { inherit lib gram; };

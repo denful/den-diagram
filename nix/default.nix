@@ -1,4 +1,4 @@
-# den-gram — standalone diagram library.
+# den-diagram — standalone diagram library.
 #
 # Pure graph IR, renderers, and fleet views extracted from den.
 # No den, capture, or inputs dependencies.
