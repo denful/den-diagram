@@ -108,7 +108,8 @@ let
   graph = {
     build = graphLib.buildGraph;
     ofNamespace = namespaceGraph;
-  } // filtersLib;
+  }
+  // filtersLib;
 
   fleet = {
     of = fleetLib.fleetGraph;
@@ -258,10 +259,11 @@ let
         spec = rendererSpecs.${name};
         args = {
           inherit theme;
-        } // lib.optionalAttrs spec.mc { inherit mermaidConfig; };
+        }
+        // lib.optionalAttrs spec.mc { inherit mermaidConfig; };
       in
       acc // { ${name} = spec.withFn args; }
-    ) { toJSON = toJSON; } (builtins.attrNames rendererSpecs);
+    ) { inherit toJSON; } (builtins.attrNames rendererSpecs);
 
   renderInfra = renderInfraFn;
 
@@ -298,4 +300,5 @@ in
     themeFromBase16
     defaultTheme
     ;
-} // allRenderers
+}
+// allRenderers

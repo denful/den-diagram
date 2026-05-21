@@ -75,7 +75,7 @@ in
         expr = {
           hasNodes = graph.nodes != [ ];
           hasEdges = graph ? edges;
-          rootName = graph.rootName;
+          inherit (graph) rootName;
         };
         expected = {
           hasNodes = true;
@@ -177,8 +177,8 @@ in
       {
         expr = {
           hasNodes = g.nodes != [ ];
-          rootName = g.rootName;
-          rootId = g.rootId;
+          inherit (g) rootName;
+          inherit (g) rootId;
         };
         expected = {
           hasNodes = true;
@@ -208,8 +208,8 @@ in
       {
         expr = {
           edgeCount = builtins.length g.edges;
-          from = edge.from;
-          to = edge.to;
+          inherit (edge) from;
+          inherit (edge) to;
         };
         expected = {
           edgeCount = 1;
@@ -245,7 +245,7 @@ in
         expr = {
           hasSubNode = subNode != null;
           subId = subNode.id;
-          providerPath = subNode.providerPath;
+          inherit (subNode) providerPath;
         };
         expected = {
           hasSubNode = true;
@@ -320,7 +320,7 @@ in
           hostCount = builtins.length result.hosts;
           userCount = builtins.length result.users;
           hasRelations = result.relations != [ ];
-          flakeName = result.flakeName;
+          inherit (result) flakeName;
         };
         expected = {
           hostCount = 2;
@@ -340,7 +340,10 @@ in
               users = {
                 bob = {
                   name = "bob";
-                  classes = [ "homeManager" "nixos" ];
+                  classes = [
+                    "homeManager"
+                    "nixos"
+                  ];
                 };
               };
             };
@@ -354,9 +357,9 @@ in
       in
       {
         expr = {
-          from = rel.from;
-          to = rel.to;
-          label = rel.label;
+          inherit (rel) from;
+          inherit (rel) to;
+          inherit (rel) label;
         };
         expected = {
           from = "bob";
@@ -419,7 +422,7 @@ in
         expr = {
           hasNodes = g.nodes != [ ];
           hasEdges = g.edges != [ ];
-          rootName = g.rootName;
+          inherit (g) rootName;
         };
         expected = {
           hasNodes = true;
@@ -470,7 +473,10 @@ in
           c = {
             name = "c";
             meta = { };
-            includes = [ { name = "a"; } { name = "b"; } ];
+            includes = [
+              { name = "a"; }
+              { name = "b"; }
+            ];
           };
         };
         g = gram.graph.ofNamespace {

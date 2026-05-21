@@ -38,7 +38,6 @@ let
       inherit (fleetCapture)
         entries
         scopeParent
-        scopeContexts
         scopeEntityKind
         scopedPipeEffects
         scopedClassImports
@@ -265,11 +264,10 @@ let
   hostSummary =
     {
       graph,
-      host ? null,
       fleetCapture ? null,
     }:
     let
-      inherit (graph) nodes edges;
+      inherit (graph) nodes;
 
       hostName = graph.rootName;
 

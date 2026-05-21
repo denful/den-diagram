@@ -82,12 +82,8 @@ let
         scopeParent
         scopeEntityKind
         scopeContexts
-        scopedPipeEffects
-        scopedClassImports
         pipeProducers
         pipeConsumers
-        entries
-        ctxTrace
         ;
 
       # --- Scope hierarchy ---
@@ -112,7 +108,7 @@ let
           inherit kind name;
           label = if kind != null then "${kind}: ${name}" else scopeId;
           parent = parentNorm;
-          children = children;
+          inherit children;
           # Context keys available at this scope.
           ctxKeys = builtins.attrNames (scopeContexts.${scopeId} or { });
         };
@@ -120,14 +116,6 @@ let
       scopes = map mkScope allScopeIds;
 
       # --- Pipe metadata ---
-
-      classKeys = [
-        "nixos"
-        "homeManager"
-        "user"
-        "darwin"
-      ];
-      isPipeKey = k: !builtins.elem k classKeys;
 
       hostScopes = builtins.filter (s: (scopeEntityKind.${s} or null) == "host") allScopeIds;
 
@@ -193,11 +181,11 @@ let
           producers = map (p: {
             host = hostNameFromScope p.scope;
             aspect = p.aspectIdentity;
-            scope = p.scope;
+            inherit (p) scope;
           }) producers;
           consumers = map (c: {
             host = hostNameFromScope c.scope;
-            scope = c.scope;
+            inherit (c) scope;
             stages = c.stageTypes or [ ];
             hasCollect = c.hasCollect or false;
           }) (builtins.filter (c: c.hasCollect or false) consumers);
@@ -214,9 +202,6 @@ let
         hostName: graph:
         let
           pipeProds = builtins.filter (p: hostNameFromScope p.scope == hostName) pipeProducers;
-          pipeCons = builtins.filter (
-            c: (c.hasCollect or false) && hostNameFromScope c.scope == hostName
-          ) pipeConsumers;
         in
         map (
           n:
@@ -224,15 +209,6 @@ let
             # Pipe annotations for this node.
             nodeProduces = lib.unique (
               map (p: p.pipeName) (builtins.filter (p: p.aspectIdentity == (n.fullLabel or n.label)) pipeProds)
-            );
-            nodeConsumes = lib.unique (
-              map (c: c.pipeName) (
-                builtins.filter (
-                  c:
-                  # Consumer is at this host scope and the node is in the same instance.
-                  hostNameFromScope c.scope == hostName
-                ) pipeCons
-              )
             );
           in
           (builtins.removeAttrs n [
@@ -402,7 +378,7 @@ let
             crossHost = true;
             host = null;
           }
-        ) (pipes.${pipeName}).flows
+        ) pipes.${pipeName}.flows
       ) allPipeNames;
 
       allEdges = scopeHierarchyEdges ++ hostRootEdges ++ allInternalEdges ++ pipeFlowEdges;
@@ -422,7 +398,7 @@ let
           inherit kind name;
           label = if kind != null then "${kind}: ${name}" else scopeId;
           parent = if parentNorm != null then sanitize "scope_${parentNorm}" else null;
-          scopeId = scopeId;
+          inherit scopeId;
         }
       ) allScopeIds;
 

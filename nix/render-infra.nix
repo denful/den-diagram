@@ -2,7 +2,7 @@
 #
 # Provides mmdSourceToSvg, pumlSourceToSvg, dotSourceToSvg — pkgs-heavy
 # build infrastructure orthogonal to graph IR.
-{ lib }:
+_:
 {
   pkgs,
   theme,

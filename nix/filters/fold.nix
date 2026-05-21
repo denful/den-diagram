@@ -2,8 +2,7 @@
 {
   lib,
   util,
-  graphLib,
-  filterMeaningful,
+  ...
 }:
 let
   inherit (util)

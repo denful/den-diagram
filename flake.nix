@@ -6,7 +6,7 @@
   outputs =
     { nixpkgs, ... }:
     let
-      lib = nixpkgs.lib;
+      inherit (nixpkgs) lib;
     in
     {
       lib = import ./nix { inherit lib; };

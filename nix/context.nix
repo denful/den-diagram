@@ -3,13 +3,13 @@
 # Accepts pre-captured data (entries, ctxTrace, pathsByClass) and builds
 # graph IR. The caller is responsible for resolving entities and capturing
 # trace data — this module has no den or capture dependency.
-{ lib, graphLib }:
+{ graphLib, ... }:
 {
   context =
     {
       entries,
-      ctxTrace ? [],
-      pathsByClass ? {},
+      ctxTrace ? [ ],
+      pathsByClass ? { },
       name,
       direction ? "LR",
     }:

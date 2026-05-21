@@ -1,8 +1,7 @@
 # Graph diff — merge two graphs with origin tags.
 {
   lib,
-  util,
-  graphLib,
+  ...
 }:
 {
   # Merge two graphs A and B into a single graph where every node and

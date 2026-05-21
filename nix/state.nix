@@ -9,10 +9,10 @@
 # are stage-synthesized and edges are stage transitions. Falls back
 # to rendering every node as a state if given a different shape.
 {
-  lib,
   themes,
   util,
   renderUtil,
+  ...
 }:
 let
   inherit (util) sanitizeChars;

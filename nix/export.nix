@@ -73,7 +73,7 @@ let
       rawExt = view.rawExt or null;
       mdDrv = mkViewMd pkgs {
         inherit base viewName source;
-        title = view.title;
+        inherit (view) title;
         inherit entityName;
         inherit (view) altText svgInfix mdLang;
       };
@@ -148,7 +148,7 @@ let
       viewName = view.view;
       mdDrv = mkViewMd pkgs {
         inherit base viewName source;
-        title = view.title;
+        inherit (view) title;
         inherit (view) altText svgInfix mdLang;
       };
       svgDrv = view.svgFn base source;
@@ -245,7 +245,7 @@ let
       renderList,
       getKey ? x: x.name or "",
     }:
-    if renderList == true then
+    if renderList then
       all
     else if builtins.isList renderList then
       builtins.filter (x: builtins.elem (getKey x) renderList) all
@@ -260,7 +260,7 @@ let
     lib.unique (
       map (e: {
         inherit (e) view;
-        tool = e.tool;
+        inherit (e) tool;
       }) (builtins.filter (e: e.dir == dir && e.ext == "svg") entries)
     );
 

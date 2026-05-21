@@ -23,7 +23,7 @@ in
         ek:
         emptyNode
         // {
-          id = ek.id;
+          inherit (ek) id;
           label = kindLabel ek;
           fullLabel = kindLabel ek;
           entityKind = "context";
@@ -199,7 +199,6 @@ in
       # For each provider, include its provide-edge targets and its
       # inclusion children (the resolved results).
       childIdsOf = id: adj.outOf.${id} or [ ];
-      parentIdsOf = id: adj.inTo.${id} or [ ];
 
       # Also include the provider source (via provide-edges pointing to it).
       provideEdgeTargets = lib.concatMap (

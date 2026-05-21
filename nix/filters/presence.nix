@@ -2,9 +2,9 @@
 {
   lib,
   util,
-  graphLib,
   filterByNodes,
   filterUserAspects,
+  ...
 }:
 let
   inherit (util)

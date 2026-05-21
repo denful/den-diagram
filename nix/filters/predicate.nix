@@ -1,10 +1,9 @@
 # Predicate filters — thin wrappers over filterByNodes.
 {
-  lib,
   util,
-  graphLib,
   filterByNodes,
   filterUserAspects,
+  ...
 }:
 let
   inherit (util)

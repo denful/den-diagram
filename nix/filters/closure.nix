@@ -1,10 +1,8 @@
 # Closure-based filters — ancestor closure, neighborhood walks.
 {
-  lib,
   util,
-  graphLib,
-  filterByNodes,
   filterUserAspects,
+  ...
 }:
 let
   inherit (util)

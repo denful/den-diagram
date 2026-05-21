@@ -2,7 +2,11 @@
 #
 # Walks aspect declarations (no host resolution) and builds a graph IR
 # showing authored building blocks and their static inclusions.
-{ lib, util, graphLib }:
+{
+  lib,
+  util,
+  graphLib,
+}:
 let
   namespaceGraph =
     {

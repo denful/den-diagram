@@ -9,7 +9,7 @@
   outputs =
     { nixpkgs, den-diagram, ... }:
     let
-      lib = nixpkgs.lib;
+      inherit (nixpkgs) lib;
       gram = den-diagram.lib;
     in
     {

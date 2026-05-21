@@ -63,7 +63,7 @@ let
   # Container_Boundary holding its aspects as Components. Aspect inclusions
   # become Rels.
   c4ComponentBody =
-    theme: graph:
+    _theme: graph:
     let
       inherit (graph)
         rootName
@@ -115,7 +115,7 @@ let
       renderableEdges = builtins.filter (e: keptIds ? ${e.from} && keptIds ? ${e.to}) edges;
     in
     [
-      ''title Component view: ${esc rootName}''
+      "title Component view: ${esc rootName}"
       ""
       ''System_Boundary(${rootId}, "${esc rootName}") {''
     ]
@@ -131,7 +131,7 @@ let
   # Each entity kind becomes a Container with a count of aspects it holds.
   # Entity kind transitions become Rels. The host is the System_Boundary.
   c4ContainerBody =
-    theme: graph:
+    _theme: graph:
     let
       inherit (graph)
         rootName
@@ -168,13 +168,13 @@ let
     in
     if entityKinds == [ ] then
       [
-        ''title Container view: ${esc rootName}''
+        "title Container view: ${esc rootName}"
         ""
         ''System(${rootId}, "${esc rootName}", "no entity kinds captured")''
       ]
     else
       [
-        ''title Container view: ${esc rootName}''
+        "title Container view: ${esc rootName}"
         ""
         ''System_Boundary(${rootId}, "${esc rootName}") {''
       ]
@@ -190,7 +190,7 @@ let
   # fleet.nix). Hosts become Systems, users become Persons, and relations
   # (user→host via classes, host→host via cross-provides) become Rels.
   c4ContextBody =
-    theme: fleet:
+    _theme: fleet:
     let
       inherit (fleet)
         flakeName
@@ -208,7 +208,7 @@ let
       relDecl = rel: ''Rel(${idOf rel.from}, ${idOf rel.to}, "${esc rel.label}")'';
     in
     [
-      ''title ${esc flakeName} — Fleet Context''
+      "title ${esc flakeName} — Fleet Context"
       ""
     ]
     ++ map personDecl users

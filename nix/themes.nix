@@ -161,7 +161,7 @@ let
       t = theme;
       vars = {
         # Shared / flowchart
-        background = t.background;
+        inherit (t) background;
         mainBkg = t.nodeBg;
         secondBkg = t.clusterBg;
         tertiaryColor = t.clusterBg;
@@ -177,9 +177,9 @@ let
         textColor = t.foreground;
         nodeBkg = t.nodeBg;
         nodeTextColor = t.nodeText;
-        nodeBorder = t.nodeBorder;
+        inherit (t) nodeBorder;
         clusterBkg = t.clusterBg;
-        clusterBorder = t.clusterBorder;
+        inherit (t) clusterBorder;
         edgeLabelBackground = t.labelBg;
         titleColor = t.foreground;
         # Sequence diagrams

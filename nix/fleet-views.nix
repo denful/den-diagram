@@ -47,28 +47,12 @@ let
     in
     if envPart != null then lib.removePrefix "environment=" envPart else null;
 
-  # Find siblings of a scope (same parent, same entity kind).
-  siblingsOf =
-    scopeParent: scopeEntityKind: scopeId:
-    let
-      parent = scopeParent.${scopeId} or null;
-      allScopes = builtins.attrNames scopeParent;
-      siblings = builtins.filter (
-        s:
-        s != scopeId
-        && (scopeParent.${s} or null) == parent
-        && (scopeEntityKind.${s} or null) == (scopeEntityKind.${scopeId} or null)
-      ) allScopes;
-    in
-    siblings;
-
   # Build pipe flow data from fleet capture.
   buildPipeFlows =
     fleetCapture:
     let
       inherit (fleetCapture)
         scopeParent
-        scopeContexts
         scopeEntityKind
         scopedPipeEffects
         scopedClassImports
@@ -197,10 +181,6 @@ let
         in
         accent theme (idx * 3);
 
-      # All hosts flattened with their role (producer, consumer, both).
-      allHosts = lib.concatMap (env: env.hosts) flows.environments;
-      allHostNames = lib.unique (map (h: h.name) allHosts);
-
       # Classify host role for node shape and color.
       hostRole =
         h:
@@ -262,7 +242,6 @@ let
         pipeName:
         let
           edges = builtins.filter (e: e.pipe == pipeName) flows.flowEdges;
-          color = pipeColorOf pipeName;
           edgeDecl = e: "  ${sanitize e.from} -->|${e.pipe}| ${sanitize e.to}";
         in
         map edgeDecl edges;
@@ -576,11 +555,6 @@ let
 
       allScopes = builtins.filter (s: s != "__unscoped" && s != "") (builtins.attrNames scopeParent);
 
-      # Group scopes by parent for fan-out display.
-      childrenOf =
-        parent:
-        lib.sort (a: b: a < b) (builtins.filter (s: (scopeParent.${s} or null) == parent) allScopes);
-
       # Build nodes with entity-kind-specific shapes.
       nodeDecl =
         scopeId:
@@ -745,7 +719,6 @@ let
     }:
     let
       flows = buildPipeFlows fleetCapture;
-      tracedProducers = fleetCapture.pipeProducers or [ ];
 
       # Prefix all node/edge IDs with the host name to avoid collisions
       # across hosts (e.g., "default" exists on every host).

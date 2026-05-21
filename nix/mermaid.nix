@@ -43,12 +43,11 @@
   lib,
   themes,
   colors,
-  util,
   renderUtil,
+  ...
 }:
 let
   inherit (colors) nodeColorFor;
-  inherit (util) fmtArgs;
   inherit (renderUtil) renderMermaid visualFor;
 
   toMermaidWith =
@@ -75,7 +74,6 @@ let
           value = n;
         }) nodes
       );
-      rootColor = theme.rootFill;
       vf = visualFor { inherit theme nodeColorFor; };
 
       # When the graph has no stage subgraphs (flat views like providers,

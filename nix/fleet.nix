@@ -36,7 +36,7 @@ let
     {
       hosts,
       flakeName ? "den flake",
-      providerSubAspects ? [],
+      providerSubAspects ? [ ],
     }:
     let
       allHosts = flattenHosts hosts;

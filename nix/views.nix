@@ -124,7 +124,7 @@ let
           title = "Graph IR (JSON)";
           altText = "IR JSON";
           fmt = raw "json";
-          compute = g: toJSON g;
+          compute = toJSON;
         })
       ];
 
@@ -231,7 +231,6 @@ let
     fleet =
       {
         render,
-        renderDense,
         mmdSourceToSvg,
         ...
       }:

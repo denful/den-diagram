@@ -368,8 +368,6 @@ let
       inherit (graph)
         rootName
         nodes
-        entityKinds
-        entityEdges
         ;
 
       orEmpty = v: if v == null then "" else v;
@@ -401,13 +399,6 @@ let
 
       childrenOf = (util.adjacency (graph.edges or [ ])).outOf;
 
-      nodeById = lib.listToAttrs (
-        map (n: {
-          name = n.id;
-          value = n;
-        }) nodes
-      );
-
       # For each policy: root dispatches to it, it activates and shows
       # the aspects it triggers grouped by entity.
       policyBlock =
@@ -433,7 +424,7 @@ let
             let
               childIds = childrenOf.${entity.id} or [ ];
               children = builtins.filter (n: builtins.elem n.id childIds && n.id != entity.id) targetAspects;
-              childLabels = map (n: nodeLabel n) children;
+              childLabels = map nodeLabel children;
             in
             [ "    Note over ${pAlias}: ${nodeLabel entity}" ]
             ++ map (l: "    ${pAlias} ->> ${pAlias}: ${l}") childLabels;
@@ -446,7 +437,7 @@ let
           orphans = builtins.filter (
             n: !(topEntityIdSet ? ${n.id}) && !(allEntityChildIdSet ? ${n.id})
           ) targetAspects;
-          orphanLabels = map (n: nodeLabel n) orphans;
+          orphanLabels = map nodeLabel orphans;
           orphanNote = wrapLabels orphanLabels;
 
           # Downstream policy chains.

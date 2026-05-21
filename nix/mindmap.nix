@@ -23,8 +23,8 @@
 {
   lib,
   themes,
-  util,
   renderUtil,
+  ...
 }:
 let
   inherit (renderUtil) renderMermaid;

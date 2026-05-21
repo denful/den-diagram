@@ -97,7 +97,6 @@ let
 
   # An entry's stable identifier is derived from its full path — not
   # its bare name — so `monitoring/enable` and `persist/enable` don't collide.
-  entryId = entry: sanitize (fullName entry);
 
   # --- Graph IR builder ---
 
@@ -311,7 +310,7 @@ let
       # in the module system.
       topLevelEntryByName = lib.listToAttrs (
         map (e: {
-          name = e.name;
+          inherit (e) name;
           value = e;
         }) (builtins.filter (e: (e.provider or [ ]) == [ ]) preTagged)
       );
