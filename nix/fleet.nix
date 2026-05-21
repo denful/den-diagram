@@ -1,9 +1,12 @@
-# Fleet-level data capture.
+# Fleet-level graph construction from a host registry.
 #
 # Produces a compact record describing all hosts/users in a den flake,
 # suitable for rendering as a C4 Context diagram. Unlike per-host tracing
-# (capture.nix), this iterates a host registry and does not resolve aspects
-# per-host.
+# (den's capture.nix), this iterates a host registry and does not resolve
+# aspects per-host.
+#
+# providerSubAspects is optional — callers that want provider data in
+# treemap views must pre-compute it via den.lib.capture and pass it in.
 #
 # Output shape:
 #
