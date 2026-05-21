@@ -226,7 +226,7 @@ let
   entriesToFiles =
     entries:
     map (e: {
-      path_ = entryRelPath e;
+      path = entryRelPath e;
       inherit (e) drv;
     }) entries;
 
