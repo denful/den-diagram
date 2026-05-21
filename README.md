@@ -1,13 +1,57 @@
 <p align="right">
-  <a href="https://github.com/denful/den"><img src="https://img.shields.io/badge/Dendritic-Nix-informational?logo=nixos&logoColor=white" alt="Dendritic Nix"/></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/denful/den-diagram" alt="License"/></a>
+  <a href="https://github.com/denful"><img src="https://img.shields.io/badge/denful-ecosystem-informational?logo=nixos&logoColor=white" alt="denful ecosystem"/></a>
+  <a href="https://github.com/denful/den"><img src="https://img.shields.io/badge/den-framework-blueviolet?logo=nixos&logoColor=white" alt="den framework"/></a>
+  <a href="https://github.com/sini"><img src="https://img.shields.io/badge/by-sini-green" alt="by sini"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/denful/den-diagram" alt="MIT License"/></a>
 </p>
 
-> by [sini](https://github.com/sini) — part of the [dendritic](https://denful.dev) ecosystem
+> part of the [denful](https://github.com/denful) ecosystem
 
 # den-diagram
 
 Diagram library for [den](https://github.com/denful/den) — graph IR construction, filtering, and multi-format rendering of aspect-resolution pipelines.
+
+## Pipeline architecture
+
+Den-diagram is organized as a five-stage pipeline. Each stage has a single responsibility and communicates through well-defined data shapes:
+
+```mermaid
+graph LR
+    subgraph den
+        capture["Capture\n<i>capture.nix</i>"]
+    end
+    subgraph den-diagram
+        graph_["Graph\n<i>context.nix, graph.nix</i>"]
+        filter["Filter\n<i>filters/</i>"]
+        render["Render\n<i>mermaid, dot, plantuml, …</i>"]
+        export["Export\n<i>export.nix, render-infra.nix</i>"]
+    end
+
+    capture -- "trace entries" --> graph_
+    graph_ -- "graph IR" --> filter
+    filter -- "pruned IR" --> render
+    render -- "source strings" --> export
+    export -- ".md, .svg" --> out(("output"))
+
+    style den fill:#2d333b,stroke:#768390,color:#adbac7
+    style den-diagram fill:#1c2128,stroke:#539bf5,color:#adbac7
+    style out fill:#347d39,stroke:#46954a,color:#fff
+```
+
+```
+capture ─→ graph ─→ filter ─→ render ─→ export
+(in den)   ─────────── (in den-diagram) ──────────
+```
+
+| Stage | Module(s) | Input | Output | Responsibility |
+|-------|-----------|-------|--------|---------------|
+| **Capture** | `den.lib.capture` (in den) | Resolved aspect tree | Structured trace entries | Run fx pipeline with tracing handlers, collect events |
+| **Graph** | `context.nix`, `graph.nix` | Trace entries | Format-agnostic graph IR (nodes, edges, entity kinds) | Build graph IR from flat trace entries — no visual concerns |
+| **Filter** | `filters/` | Graph IR | Pruned/reshaped graph IR | Prune, fold, slice, diff — pure transforms over the IR |
+| **Render** | `mermaid.nix`, `dot.nix`, `plantuml.nix`, ... | Graph IR | Diagram source strings | Emit format-specific text — theme, colors, layout are render-time concerns |
+| **Export** | `export.nix`, `render-infra.nix` | Source strings + `pkgs` | Nix derivations (`.md`, `.svg`) | Build derivations via mermaid-cli/graphviz/plantuml, assemble galleries |
+
+The first stage (capture) lives in den because it drives the fx pipeline. Everything after that is den-diagram — pure functions over plain attrsets, with `export` being the only stage that touches `pkgs`.
 
 ## Usage
 
@@ -19,8 +63,6 @@ inputs.den-diagram.url = "github:denful/den-diagram";
 
 ### Two-step pattern: capture in den, render in den-diagram
 
-Den's capture layer runs the fx pipeline with tracing handlers and produces structured trace entries. Den-diagram turns those entries into graphs and rendered diagrams.
-
 ```nix
 gram = inputs.den-diagram.lib;
 
@@ -31,7 +73,7 @@ captured = den.lib.capture.captureWithPathsWith {
   ctx = { inherit host; };
 };
 
-# 2. Context — builds format-agnostic graph IR from trace entries
+# 2. Graph — builds format-agnostic IR from trace entries
 g = gram.context {
   entries = captured.entries;
   ctxTrace = captured.ctxTrace;
@@ -103,16 +145,16 @@ gram.graph.diffClasses g;         # class comparison
 gram.graph.filterUserAspects g;   # user-declared only
 ```
 
-## Architecture
+## Dependency model
 
-Den-diagram is a pure Nix library — it depends only on `nixpkgs.lib`. It has no dependency on den's fx pipeline or module system. The library accepts pre-captured trace data as plain attrsets, making the dependency one-directional: den → den-diagram.
+Den-diagram depends only on `nixpkgs.lib`. It has no dependency on den's fx pipeline or module system. The dependency is one-directional: den → den-diagram.
 
 ```
-den (capture.nix)          den-diagram
-┌─────────────────┐        ┌──────────────────────┐
-│ captureWithPaths │──data─▶│ context → graph IR   │
-│ captureFleet     │        │ filters → pruned IR  │
-│ captureAll       │        │ renderers → strings  │
-└─────────────────┘        │ export → derivations  │
-                           └──────────────────────┘
+den                           den-diagram
+┌───────────────────┐         ┌──────────────────────────────────┐
+│ captureWithPaths  │─ data ─>│ graph     -> format-agnostic IR  │
+│ captureFleet      │         │ filters   -> pruned IR           │
+│ captureAll        │         │ renderers -> source strings      │
+│                   │         │ export    -> derivations         │
+└───────────────────┘         └──────────────────────────────────┘
 ```
