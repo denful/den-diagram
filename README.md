@@ -7,7 +7,7 @@ Diagram library for [den](https://github.com/denful/den) — graph IR constructi
 Add as a flake input:
 
 ```nix
-inputs.den-diagram.url = "github:sini/den-diagram";
+inputs.den-diagram.url = "github:denful/den-diagram";
 ```
 
 ### Two-step pattern: capture in den, render in den-diagram
