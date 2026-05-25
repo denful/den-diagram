@@ -103,7 +103,7 @@ let
   namespaceGraph = import ./namespace.nix { inherit lib util graphLib; };
   renderInfraFn = import ./render-infra.nix { inherit lib; };
 
-  inherit (ctxLib) context;
+  inherit (ctxLib) context projectScope;
 
   graph = {
     build = graphLib.buildGraph;
@@ -280,6 +280,7 @@ in
 {
   inherit
     context
+    projectScope
     graph
     fleet
     fleetGraph
