@@ -68,7 +68,9 @@
         s: (scopeEntityKind.${s} or null) == kind && entityNameFromScope kind s == name
       ) null allScopeIds;
 
-      # Collect all descendant scope IDs (inclusive)
+      # Collect all descendant scope IDs (inclusive).
+      # Safe from cycles: push-scope.nix creates scopes with parentScope
+      # set before newScopeId, so scopeParent is always a DAG.
       descendants =
         rootId:
         let
@@ -94,7 +96,10 @@
       );
 
       # Entries visible from this scope: matching entityInstance or
-      # unscoped entries (null instance) that appear in any subtree scope
+      # unscoped entries (null instance). Unscoped entries are flake-level
+      # aspects (batteries, defaults) resolved before any entity scope —
+      # they're inherited by all projections, matching how NixOS module
+      # evaluation sees them.
       filteredEntries = builtins.filter (
         e:
         let inst = e.entityInstance or null; in
