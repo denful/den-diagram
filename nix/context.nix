@@ -49,7 +49,12 @@
       direction ? "LR",
     }:
     let
-      inherit (fleetCapture) scopeParent scopeEntityKind entries ctxTrace;
+      inherit (fleetCapture)
+        scopeParent
+        scopeEntityKind
+        entries
+        ctxTrace
+        ;
       allScopeIds = builtins.attrNames scopeParent;
 
       # Extract entity name from a scope ID segment.
@@ -60,8 +65,7 @@
           parts = lib.splitString "," scopeId;
           matching = builtins.filter (p: lib.hasPrefix "${entityKind}=" p) parts;
         in
-        if matching == [ ] then null
-        else lib.removePrefix "${entityKind}=" (builtins.head matching);
+        if matching == [ ] then null else lib.removePrefix "${entityKind}=" (builtins.head matching);
 
       # Find the scope ID for this entity
       targetScopeId = lib.findFirst (
@@ -102,18 +106,17 @@
       # evaluation sees them.
       filteredEntries = builtins.filter (
         e:
-        let inst = e.entityInstance or null; in
-        if inst != null then subtreeInstances ? ${inst}
-        else subtreeScopes != [ ]
+        let
+          inst = e.entityInstance or null;
+        in
+        if inst != null then subtreeInstances ? ${inst} else subtreeScopes != [ ]
       ) entries;
 
       # ctxTrace entries for entity kinds present in the subtree
       subtreeKinds = lib.unique (
         lib.filter (x: x != null) (map (s: scopeEntityKind.${s} or null) subtreeScopes)
       );
-      filteredCtxTrace = builtins.filter (
-        c: lib.elem (c.entityKind or null) subtreeKinds
-      ) ctxTrace;
+      filteredCtxTrace = builtins.filter (c: lib.elem (c.entityKind or null) subtreeKinds) ctxTrace;
 
       graph = graphLib.buildGraph {
         entries = filteredEntries;
