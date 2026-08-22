@@ -39,6 +39,7 @@ let
       maxEdges = 100000;
       inherit fontFamily;
       securityLevel = "loose";
+      htmlLabels = false;
     }
   );
 
