@@ -135,8 +135,14 @@ let
           null;
       # Pre-tag: assign root entity instance to null-instance entries so
       # they merge with same-scope entries during dedup (no duplicates).
+      # `util.withChain` first: it restates the entry's provenance chain under
+      # the one name the code below reads, so den's `provider` -> `aspect-chain`
+      # rename is absorbed here instead of at each of this file's reads.
       preTagged = map (
-        e:
+        e0:
+        let
+          e = util.withChain e0;
+        in
         if (e.entityInstance or null) == null && rootInstance != null then
           e // { entityInstance = rootInstance; }
         else

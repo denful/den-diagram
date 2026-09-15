@@ -93,7 +93,7 @@ let
       renderUtil
       ;
   };
-  textLib = import ./text.nix { inherit lib; };
+  textLib = import ./text.nix { inherit lib util; };
   fleetIR = import ./fleet-ir.nix { inherit lib; };
   fleetLib = import ./fleet.nix { inherit lib; };
   exportLib = import ./export.nix { inherit lib; };

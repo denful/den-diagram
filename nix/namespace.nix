@@ -46,7 +46,7 @@ let
           hasConstraint = (value.meta.handleWith or null) != null;
           hasProvides = (value.provides or { }) != { };
           hasIncludes = incs != [ ];
-          providerChain = value.meta.provider or [ ];
+          providerChain = util.chainOf value.meta;
         in
         graphLib.emptyNode
         // {
