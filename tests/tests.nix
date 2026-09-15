@@ -254,6 +254,84 @@ in
         };
       };
 
+    # The SAME graph from den's post-rename spelling of the provenance chain.
+    # den renamed the field `provider` -> `aspect-chain` (denful/den#678), and
+    # the two never coexist in one den, so both spellings must build the same
+    # node. Paired with test-provider-entries above, which is the identical
+    # fixture under the old name: together they pin the compat in BOTH
+    # directions, and a regression breaks exactly one of the pair.
+    test-aspect-chain-entries =
+      let
+        entries = [
+          (mkEntry {
+            name = "root";
+            class = "nixos";
+            hasClass = true;
+          })
+          # `provider` REMOVED, not merely overridden: post-rename den emits no
+          # such key, and its absence is what made graph.nix abort with
+          # `attribute 'provider' missing`. An entry carrying both names would
+          # pass on the preferred arm without ever exercising that.
+          (
+            builtins.removeAttrs (mkEntry {
+              name = "sub";
+              parent = "root";
+              class = "nixos";
+              hasClass = true;
+            }) [ "provider" ]
+            // {
+              "aspect-chain" = [ "root" ];
+            }
+          )
+        ];
+        g = diagram.graph.build {
+          inherit entries;
+          rootName = "root";
+        };
+        subNode = lib.findFirst (n: n.label == "root/sub") null g.nodes;
+      in
+      {
+        expr = {
+          hasSubNode = subNode != null;
+          subId = subNode.id;
+          inherit (subNode) providerPath;
+        };
+        expected = {
+          hasSubNode = true;
+          subId = "root__sub";
+          providerPath = [ "root" ];
+        };
+      };
+
+    # A chainless entry gains NO path segments. Without this, both cells above
+    # would also pass for a reader that ignored the chain entirely and let the
+    # `or [ ]` fallback stand in for it — which is the silent half of the
+    # rename break.
+    test-no-chain-keeps-bare-id =
+      let
+        g = diagram.graph.build {
+          entries = [
+            (mkEntry {
+              name = "solo";
+              class = "nixos";
+              hasClass = true;
+            })
+          ];
+          rootName = "solo";
+        };
+        node = lib.findFirst (n: n.label == "solo") null g.nodes;
+      in
+      {
+        expr = {
+          id = node.id;
+          inherit (node) providerPath;
+        };
+        expected = {
+          id = "solo";
+          providerPath = [ ];
+        };
+      };
+
     # excluded nodes don't generate outbound edges
     test-excluded-edge-suppression =
       let

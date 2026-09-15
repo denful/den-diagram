@@ -4,6 +4,27 @@
 # render-time concerns — those live in render-util.nix.
 { lib }:
 let
+  # The provenance chain of a trace entry (or of an aspect's `meta`), read
+  # under BOTH spellings den has used for it.
+  #
+  # den renamed this field `provider` -> `aspect-chain` (denful/den#678). The
+  # two names never coexist in one den, so reading both makes one den-diagram
+  # work against either side of that rename rather than pinning consumers to a
+  # den revision. Both arms are needed: `aspect-chain` alone breaks every den
+  # at or before the rename, `provider` alone breaks every den after it.
+  #
+  # Ends in `[ ]` rather than throwing because a synthetic entry legitimately
+  # has no chain (see `stubEntry` in graph.nix) — but note that an `or [ ]`
+  # fallback is also what let the rename read as "root aspect" everywhere
+  # instead of failing, so this is the ONLY place that fallback belongs.
+  # Callers take the chain from here and do not re-spell either field name.
+  chainOf = e: e."aspect-chain" or e.provider or [ ];
+
+  # Restate an entry's chain under the name the graph code reads, so the
+  # compat rule lives at ingestion and every downstream read stays single-
+  # spelled.
+  withChain = e: e // { provider = chainOf e; };
+
   # Drop list entries whose key (derived by keyFn) has been seen before.
   # Preserves input order.
   dedupBy =
@@ -366,6 +387,8 @@ let
 in
 {
   inherit
+    chainOf
+    withChain
     dedupBy
     fmtArgs
     meaningful

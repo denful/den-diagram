@@ -5,7 +5,7 @@
 # and LLM-friendly configuration review.
 #
 # All functions return plain strings (not derivations).
-{ lib }:
+{ lib, util }:
 let
   # entityInstance is explicitly null in some graph constructors;
   # Nix `or` only catches missing attrs, not null values.
@@ -175,7 +175,7 @@ let
         e:
         !(e.isPolicyDispatch or false)
         && (e.hasClass or false)
-        && (e.provider or [ ]) == [ ]
+        && util.chainOf e == [ ]
         && e.name != "host"
         && e.name != "user"
         && e.name != "default"

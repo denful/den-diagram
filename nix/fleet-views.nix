@@ -438,7 +438,7 @@ let
             (e.entityInstance or null) == hostInstance
             && (e.hasClass or false)
             && !(e.isPolicyDispatch or false)
-            && (e.provider or [ ]) == [ ]
+            && util.chainOf e == [ ]
             && e.name != "host"
             && e.name != "user"
             && e.name != "default"
