@@ -395,6 +395,23 @@ in
         };
       };
 
+    test-policy-map-draws-flake-root =
+      let
+        out = diagram.toPolicyResolutionMapMermaid fleetCapture;
+      in
+      {
+        expr = {
+          node = hasLine "  flake([\"flake\"])" out;
+          toFleet = hasLine "  flake -->|to-fleet| fleet_fleet" out;
+          toSystem = hasLine "  flake -->|flake-to-systems| system_x86_64_linux" out;
+        };
+        expected = {
+          node = true;
+          toFleet = true;
+          toSystem = true;
+        };
+      };
+
     # hasAspectPresent reads the pathsByClass that `context` attaches.
     test-has-aspect-present-reads-context-paths =
       let

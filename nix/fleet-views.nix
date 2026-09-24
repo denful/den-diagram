@@ -547,14 +547,22 @@ let
 
       allScopes = builtins.filter (s: s != "__unscoped" && s != "") (builtins.attrNames scopeParent);
 
+      # den roots the scope tree at the flake entity, whose scope id is
+      # `__unscoped`; drawing it connects its children (fleet, flake-system).
+      rootScope = "__unscoped";
+      drawnScopes =
+        lib.optional (builtins.any (s: scopeParent.${s} == rootScope) allScopes) rootScope ++ allScopes;
+      kindOf = s: if s == rootScope then "flake" else scopeEntityKind.${s} or null;
+      idOf = s: if s == rootScope then "flake" else sanitize s;
+
       # Build nodes with entity-kind-specific shapes.
       nodeDecl =
         scopeId:
         let
-          kind = scopeEntityKind.${scopeId} or null;
-          label = scopeLabel scopeEntityKind scopeId;
+          kind = kindOf scopeId;
+          label = if scopeId == rootScope then "flake" else scopeLabel scopeEntityKind scopeId;
           shape =
-            if kind == "fleet" then
+            if kind == "flake" || kind == "fleet" then
               "([\"${label}\"])"
             else if kind == "environment" then
               "{{\"${label}\"}}"
@@ -565,7 +573,7 @@ let
             else
               "[\"${label}\"]";
         in
-        "  ${sanitize scopeId}${shape}";
+        "  ${idOf scopeId}${shape}";
 
       # Build edges annotated with the policy that drives the transition.
       edgeDecl =
@@ -575,12 +583,11 @@ let
           policyLabel = scopeSourcePolicy.${scopeId} or null;
           arrow = if policyLabel != null then "-->|${policyLabel}|" else "-->";
         in
-        lib.optional (
-          parent != null && parent != "__unscoped" && parent != ""
-        ) "  ${sanitize parent} ${arrow} ${sanitize scopeId}";
+        lib.optional (parent != null && parent != "") "  ${idOf parent} ${arrow} ${idOf scopeId}";
 
       # Color by entity kind.
       kindColors = {
+        flake = theme.rootFill;
         fleet = accent theme 5;
         environment = accent theme 6;
         host = accent theme 3;
@@ -590,11 +597,10 @@ let
       nodeStyle =
         scopeId:
         let
-          kind = scopeEntityKind.${scopeId} or null;
-          color = kindColors.${kind} or theme.nodeBg;
+          color = kindColors.${toString (kindOf scopeId)} or theme.nodeBg;
           text = theme.rootText;
         in
-        "  style ${sanitize scopeId} fill:${color},stroke:${color},color:${text}";
+        "  style ${idOf scopeId} fill:${color},stroke:${color},color:${text}";
     in
     renderMermaid
       {
@@ -602,11 +608,11 @@ let
         diagramKind = "graph TD";
       }
       (
-        map nodeDecl allScopes
+        map nodeDecl drawnScopes
         ++ [ "" ]
         ++ lib.concatMap edgeDecl allScopes
         ++ [ "" ]
-        ++ map nodeStyle allScopes
+        ++ map nodeStyle drawnScopes
       );
 
   toPolicyResolutionMapMermaid = toPolicyResolutionMapMermaidWith { };
