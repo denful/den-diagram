@@ -171,6 +171,27 @@ let
         acc // { ${k} = (acc.${k} or [ ]) ++ [ e ]; }
       ) { } preTagged;
 
+      # A parametric aspect is traced twice: once as itself, before its
+      # arguments are bound (not parametric, no class content), and once as
+      # its `<kind>/resolve(<name>)` child, which carries both. Filters fold
+      # that child away as a wrapper, so its facts are credited to the
+      # aspect here, keyed like groupedByName. `<kind>/resolve(<kind>)` is an
+      # entity root resolving itself, not a parametric aspect.
+      resolvedBy = lib.foldl' (
+        acc: e:
+        let
+          m = builtins.match "(.*)/resolve\\((.+)\\)" (fullName e);
+          k = "${e.parent}|${instOf e}";
+        in
+        if
+          m != null && e.parent != null && builtins.elemAt m 1 == e.parent && builtins.elemAt m 0 != e.parent
+        then
+          acc // { ${k} = (acc.${k} or [ ]) ++ [ e ]; }
+        else
+          acc
+      ) { } preTagged;
+      withResolved = lib.mapAttrs (k: es: es ++ (resolvedBy.${k} or [ ])) groupedByName;
+
       # Detect fullNames appearing in multiple entity instances — these
       # need scope-qualified IDs so nodes don't collide.
       instancesPerFullName = lib.foldl' (
@@ -202,7 +223,7 @@ let
             map (e: e.class or null) (builtins.filter (e: e.hasClass or false) es)
           )
         )
-      ) groupedByName;
+      ) withResolved;
 
       # Per-class metadata for each aspect. Structural fields (parent,
       # provider, stage, isParametric) stay on the node top level since
@@ -248,7 +269,7 @@ let
           else
             acc // { ${c} = newEntry; }
         ) { } es
-      ) groupedByName;
+      ) withResolved;
 
       nodes = dedupBy scopeKey preTagged;
       # Set of rendered node IDs for parent resolution.
@@ -377,8 +398,19 @@ let
       inherit (util) nullOr;
 
       mkNode =
-        entry:
+        traced:
         let
+          resolved = resolvedBy.${scopeKey traced} or [ ];
+          entry =
+            if resolved == [ ] then
+              traced
+            else
+              traced
+              // {
+                isParametric = builtins.any (e: e.isParametric or false) ([ traced ] ++ resolved);
+                hasClass = builtins.any (e: e.hasClass or false) ([ traced ] ++ resolved);
+                fnArgNames = lib.unique (lib.concatMap (e: e.fnArgNames or [ ]) ([ traced ] ++ resolved));
+              };
           sk = scopeKey entry;
           merged = classesByName.${sk} or [ ];
           perClass = perClassByName.${sk} or { };

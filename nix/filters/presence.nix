@@ -28,11 +28,11 @@ let
     graph:
     let
       pathSets =
-        graph.pathSets
-          or (throw "hasAspectPresent: graph is missing pathSets; build via diag.graph.hostContext, not ofHost.");
+        graph.pathsByClass
+          or (throw "hasAspectPresent: graph has no pathsByClass; build it with diagram.context, passing the pathsByClass of den.lib.capture.captureWithPaths.");
       pathSet =
         pathSets.${class}
-          or (throw "hasAspectPresent: no pathSet captured for class '${class}'. Known classes: ${lib.concatStringsSep ", " (builtins.attrNames pathSets)}.");
+          or (throw "hasAspectPresent: no pathSet captured for class '${class}'. Known classes: ${lib.concatStringsSep ", " (builtins.attrNames pathSets)}. projectScope graphs carry none; use diagram.context.");
     in
     hasAspectPresentWith pathSet graph;
 

@@ -392,10 +392,10 @@ let
       # Root entity participant.
       rootParticipant = "    participant root as ${rootName}";
 
-      # Each policy becomes a participant.
-      policyParticipants = map (
-        pn: "    participant ${aliasOf (pn.policyName or pn.label)} as ${pn.policyName or pn.label}"
-      ) policyNodes;
+      # Each policy becomes one participant, however many scopes it fired in.
+      policyParticipants = map (name: "    participant ${aliasOf name} as ${name}") (
+        lib.unique (map (pn: pn.policyName or pn.label) policyNodes)
+      );
 
       childrenOf = (util.adjacency (graph.edges or [ ])).outOf;
 

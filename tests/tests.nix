@@ -51,8 +51,446 @@ let
         to
         ;
     };
+
+  lines = s: lib.splitString "\n" s;
+  hasLine = l: s: builtins.elem l (lines s);
+  countLines = pred: s: builtins.length (builtins.filter pred (lines s));
+
+  # WCAG 2.x relative luminance / contrast ratio. Nix has no float pow, so
+  # x^0.4 is solved by Newton's method on y^5 = x^2.
+  contrast =
+    let
+      hexVal =
+        s:
+        lib.foldl' (
+          acc: c:
+          acc * 16 + lib.lists.findFirstIndex (d: d == c) 0 (lib.stringToCharacters "0123456789abcdef")
+        ) 0 (lib.stringToCharacters (lib.toLower s));
+      root5 =
+        x: lib.foldl' (y: _: y - (y * y * y * y * y - x) / (5.0 * y * y * y * y)) 1.0 (lib.range 1 40);
+      linear =
+        c8:
+        let
+          c = c8 / 255.0;
+          b = (c + 5.5e-2) / 1.055;
+        in
+        if c <= 4.045e-2 then c / 12.92 else b * b * root5 (b * b);
+      channel = hex: i: linear (hexVal (builtins.substring (1 + 2 * i) 2 hex) * 1.0);
+      luminance = hex: 0.2126 * channel hex 0 + 0.7152 * channel hex 1 + 7.22e-2 * channel hex 2;
+    in
+    a: b:
+    let
+      la = luminance a;
+      lb = luminance b;
+    in
+    (lib.max la lb + 5.0e-2) / (lib.min la lb + 5.0e-2);
+
+  # A devbox-shaped trace: an organizer role with no class content of its
+  # own, and a parametric aspect whose class content is traced on its
+  # `host/resolve(<name>)` child rather than on the aspect itself.
+  devboxEntries = [
+    (mkEntry {
+      name = "devbox";
+      class = "nixos";
+      hasClass = true;
+    })
+    (mkEntry {
+      name = "workstation";
+      parent = "devbox";
+      class = "nixos";
+    })
+    (mkEntry {
+      name = "desktop";
+      parent = "workstation";
+      class = "nixos";
+      hasClass = true;
+    })
+    (mkEntry {
+      name = "server";
+      parent = "devbox";
+      class = "nixos";
+      hasClass = true;
+    })
+    (mkEntry {
+      name = "backup";
+      parent = "server";
+      class = "nixos";
+    })
+    (mkEntry {
+      name = "host/resolve(backup)";
+      parent = "backup";
+      class = "nixos";
+      hasClass = true;
+      isParametric = true;
+      fnArgNames = [ "host" ];
+    })
+    # An entity root resolves itself; that is not a parametric aspect.
+    (mkEntry {
+      name = "user";
+      parent = "devbox";
+      class = "nixos";
+    })
+    (mkEntry {
+      name = "user/resolve(user)";
+      parent = "user";
+      class = "nixos";
+      hasClass = true;
+    })
+    (mkEntry {
+      name = "os-to-host";
+      isPolicyDispatch = true;
+      policyName = "os-to-host";
+      from = "host";
+    })
+  ];
+  devbox = diagram.graph.build {
+    entries = devboxEntries;
+    rootName = "devbox";
+  };
+  nodeByLabel = g: label: lib.findFirst (n: n.label == label) null g.nodes;
+  hasEdge =
+    g: from: to:
+    builtins.any (e: e.from == from && e.to == to) g.edges;
+
+  # Fleet capture shaped like fleet-demo: flake -> fleet -> environment ->
+  # host -> user, plus the per-system scope den always creates. ctxTrace is
+  # in the pipeline's emission order, which is not root-to-leaf.
+  fleetCapture = {
+    entries = [
+      (mkEntry {
+        name = "env-users";
+        isPolicyDispatch = true;
+        policyName = "env-users";
+        from = "host";
+      })
+      (mkEntry {
+        name = "collect-backends";
+        isPolicyDispatch = true;
+        policyName = "collect-backends";
+        from = "host";
+      })
+    ];
+    scopeParent = {
+      "system=x86_64-linux" = "__unscoped";
+      "fleet=fleet" = "__unscoped";
+      "environment=prod,fleet=fleet" = "fleet=fleet";
+      "environment=prod,fleet=fleet,host=lb" = "environment=prod,fleet=fleet";
+      "environment=prod,fleet=fleet,host=web" = "environment=prod,fleet=fleet";
+      "environment=prod,fleet=fleet,host=lb,user=alice" = "environment=prod,fleet=fleet,host=lb";
+      "environment=prod,fleet=fleet,host=web,user=alice" = "environment=prod,fleet=fleet,host=web";
+      "environment=prod,fleet=fleet,host=web,user=bob" = "environment=prod,fleet=fleet,host=web";
+    };
+    scopeEntityKind = {
+      "system=x86_64-linux" = "flake-system";
+      "fleet=fleet" = "fleet";
+      "environment=prod,fleet=fleet" = "environment";
+      "environment=prod,fleet=fleet,host=lb" = "host";
+      "environment=prod,fleet=fleet,host=web" = "host";
+      "environment=prod,fleet=fleet,host=lb,user=alice" = "user";
+      "environment=prod,fleet=fleet,host=web,user=alice" = "user";
+      "environment=prod,fleet=fleet,host=web,user=bob" = "user";
+    };
+    scopeSourcePolicy = {
+      "system=x86_64-linux" = "flake-to-systems";
+      "fleet=fleet" = "to-fleet";
+      "environment=prod,fleet=fleet" = "fleet-to-envs";
+      "environment=prod,fleet=fleet,host=lb" = "env-to-hosts";
+      "environment=prod,fleet=fleet,host=web" = "env-to-hosts";
+      "environment=prod,fleet=fleet,host=lb,user=alice" = "env-users";
+      "environment=prod,fleet=fleet,host=web,user=alice" = "env-users";
+      "environment=prod,fleet=fleet,host=web,user=bob" = "env-users";
+    };
+    scopedPipeEffects = { };
+    scopedClassImports = { };
+    ctxTrace = map (k: { key = k; }) [
+      "flake-system"
+      "environment"
+      "host"
+      "user"
+      "fleet"
+      "flake"
+    ];
+  };
 in
 {
+  doc-review = {
+    # A parametric aspect contributes class content through its resolve
+    # child; the slice must keep it and draw it as parametric.
+    test-class-slice-keeps-parametric-aspect =
+      let
+        backup = nodeByLabel (diagram.graph.classSlice "nixos" devbox) "backup";
+      in
+      {
+        expr = {
+          kept = backup != null;
+          shape = backup.shape or null;
+          aspectsShape = (nodeByLabel (diagram.graph.aspectsOnly devbox) "backup").shape;
+          entityRoot = (nodeByLabel devbox "user").hasClass;
+        };
+        expected = {
+          kept = true;
+          shape = "hexagon";
+          aspectsShape = "hexagon";
+          entityRoot = false;
+        };
+      };
+
+    # An organizer aspect (includes only) is still user-declared.
+    test-user-declared-keeps-organizer =
+      let
+        g = diagram.graph.userDeclaredOnly (diagram.graph.aspectsOnly devbox);
+      in
+      {
+        expr = {
+          workstation = nodeByLabel g "workstation" != null;
+          inEdge = hasEdge g "devbox" "workstation";
+          outEdge = hasEdge g "workstation" "desktop";
+          policyDropped = nodeByLabel g "os-to-host" == null;
+        };
+        expected = {
+          workstation = true;
+          inEdge = true;
+          outEdge = true;
+          policyDropped = true;
+        };
+      };
+
+    # WCAG AA (4.5:1) for every fill the default theme puts text on.
+    test-default-theme-contrast =
+      let
+        t = diagram.defaultTheme;
+        pairs =
+          map (fill: {
+            inherit fill;
+            text = t.rootText;
+          }) t.accentPool
+          ++ [
+            {
+              fill = t.rootFill;
+              text = t.rootText;
+            }
+            {
+              fill = t.excludedFill;
+              text = t.excludedText;
+            }
+            {
+              fill = t.replacedFill;
+              text = t.replacedText;
+            }
+            {
+              fill = t.nodeBg;
+              text = t.nodeText;
+            }
+            {
+              fill = t.clusterBg;
+              text = t.foreground;
+            }
+          ];
+      in
+      {
+        expr = map (p: "${p.fill} on ${p.text}") (builtins.filter (p: contrast p.fill p.text < 4.5) pairs);
+        expected = [ ];
+      };
+
+    # Without environments, hosts hang straight off the per-system scope;
+    # the fleet DAG must still draw them.
+    test-fleet-dag-without-environments =
+      let
+        out = diagram.toFleetDagMermaid {
+          fleetCapture = {
+            scopeParent = {
+              "system=x" = "__unscoped";
+              "host=laptop,system=x" = "system=x";
+            };
+            scopeEntityKind = {
+              "system=x" = "flake-system";
+              "host=laptop,system=x" = "host";
+            };
+            scopedPipeEffects = { };
+            scopedClassImports = { };
+          };
+          hostGraphs.laptop = diagram.graph.build {
+            entries = [
+              (mkEntry {
+                name = "laptop";
+                class = "nixos";
+                hasClass = true;
+              })
+            ];
+            rootName = "laptop";
+          };
+        };
+      in
+      {
+        expr = {
+          subgraph = hasLine "    subgraph host_laptop[\"laptop\"]" out;
+          node = hasLine "      laptop__laptop[\"laptop\"]" out;
+        };
+        expected = {
+          subgraph = true;
+          node = true;
+        };
+      };
+
+    # An organizer between the host and class-bearing aspects stays in the
+    # fleet DAG, so the aspects under it are not cut loose.
+    test-fleet-dag-keeps-organizers =
+      let
+        out = diagram.toFleetDagMermaid {
+          fleetCapture = {
+            scopeParent."host=devbox" = "__unscoped";
+            scopeEntityKind."host=devbox" = "host";
+            scopedPipeEffects = { };
+            scopedClassImports = { };
+          };
+          hostGraphs = { inherit devbox; };
+        };
+      in
+      {
+        expr = {
+          node = hasLine "      devbox__workstation[\"workstation\"]" out;
+          edge = hasLine "      devbox__workstation --> devbox__desktop" out;
+        };
+        expected = {
+          node = true;
+          edge = true;
+        };
+      };
+
+    # The same policy firing in two scopes is one participant.
+    test-policy-sequence-unique-participants =
+      let
+        g = diagram.graph.build {
+          entries = [
+            (mkEntry { name = "laptop"; })
+            (mkEntry {
+              name = "os-to-host";
+              isPolicyDispatch = true;
+              policyName = "os-to-host";
+              from = "host";
+              entityInstance = "host:laptop";
+            })
+            (mkEntry {
+              name = "os-to-host";
+              isPolicyDispatch = true;
+              policyName = "os-to-host";
+              from = "user";
+              entityInstance = "user:alice";
+            })
+          ];
+          rootName = "laptop";
+        };
+      in
+      {
+        expr = countLines (lib.hasPrefix "    participant os_to_host ") (diagram.toPolicySequenceMermaid g);
+        expected = 1;
+      };
+
+    test-fleet-summary-chain-and-users =
+      let
+        out = diagram.text.fleetSummary fleetCapture;
+      in
+      {
+        expr = {
+          chain = hasLine "- Scope chain: flake → flake-system; flake → fleet → environment → host → user" out;
+          counts = hasLine "- **1** environments, **2** hosts, **2** users" out;
+          envRow = hasLine "| prod | lb, web | 2 | 2 |" out;
+        };
+        expected = {
+          chain = true;
+          counts = true;
+          envRow = true;
+        };
+      };
+
+    # An edge is labelled with the policy that created the child scope, not
+    # with every policy that fired at the parent.
+    test-policy-map-labels-creating-policy =
+      let
+        out = diagram.toPolicyResolutionMapMermaid fleetCapture;
+      in
+      {
+        expr = {
+          userEdge = hasLine "  environment_prod_fleet_fleet_host_web -->|env-users| environment_prod_fleet_fleet_host_web_user_bob" out;
+          otherPolicy = lib.hasInfix "collect-backends" out;
+        };
+        expected = {
+          userEdge = true;
+          otherPolicy = false;
+        };
+      };
+
+    test-policy-map-draws-flake-root =
+      let
+        out = diagram.toPolicyResolutionMapMermaid fleetCapture;
+      in
+      {
+        expr = {
+          node = hasLine "  flake([\"flake\"])" out;
+          toFleet = hasLine "  flake -->|to-fleet| fleet_fleet" out;
+          toSystem = hasLine "  flake -->|flake-to-systems| system_x86_64_linux" out;
+        };
+        expected = {
+          node = true;
+          toFleet = true;
+          toSystem = true;
+        };
+      };
+
+    # hasAspectPresent reads the pathsByClass that `context` attaches.
+    test-has-aspect-present-reads-context-paths =
+      let
+        g = diagram.context {
+          entries = devboxEntries;
+          name = "devbox";
+          pathsByClass.nixos = {
+            devbox = true;
+            server = true;
+          };
+        };
+      in
+      {
+        expr = map (n: n.label) (diagram.graph.hasAspectPresent { class = "nixos"; } g).nodes;
+        expected = [
+          "devbox"
+          "server"
+        ];
+      };
+
+    test-has-aspect-present-error-names-context = {
+      expr = (diagram.graph.hasAspectPresent { class = "nixos"; } devbox).nodes;
+      expectedError = {
+        type = "ThrownError";
+        msg = "diagram.context";
+      };
+    };
+
+    test-entity-entries-error-names-current-api = {
+      # Force the rendered source, the first place the entity is read.
+      expr =
+        (builtins.head (
+          diagram.export.entityEntries
+            {
+              pkgs.writeText = _: text: text;
+              rc = {
+                renderDense = diagram.renderers { };
+                mmdSourceToSvg = _: _: null;
+              };
+            }
+            {
+              entity = { };
+              name = "x";
+              dir = "x";
+              viewDefs = [ ];
+            }
+        )).drv;
+      expectedError = {
+        type = "ThrownError";
+        msg = "projectScope or context\\)";
+      };
+    };
+  };
+
   context = {
     # diagram.context builds a graph IR from trace entries
     test-basic-context =

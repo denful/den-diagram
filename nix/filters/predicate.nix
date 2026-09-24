@@ -13,11 +13,15 @@ let
     ;
 in
 {
-  # User-declared view: only nodes that carry `hasClass = true` — i.e.
-  # aspects a user explicitly wrote, as opposed to plumbing nodes or
-  # module-merge artifacts. Cuts out a lot of pipeline noise without
-  # going all the way to `simplified`.
-  userDeclaredOnly = graph: filterByNodes (n: n.hasClass or false) (filterUserAspects graph);
+  # User-declared view: aspects that contribute class content, plus the
+  # aspects that include them. An organizer such as a role has no class
+  # content of its own but is still something a user wrote; policies and
+  # tombstones reach no class content and drop out.
+  userDeclaredOnly =
+    graph:
+    util.ancestorClosureBy (n: (n.hasClass or false) && !(n.isPolicyDispatch or false)) (
+      filterUserAspects graph
+    );
 
   # Pipeline meta view: keep ONLY wrapper/plumbing nodes, dropping all
   # user-facing aspects. Reveals how a single aspect flows through the

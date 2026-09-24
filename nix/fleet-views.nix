@@ -527,9 +527,10 @@ let
 
   # --- View 4: Policy entity resolution map ---
   #
-  # Shows the fleet scope tree annotated with which policies drive each
-  # entity transition: fleet → environment (via fleet-to-envs) → host
-  # (via env-to-hosts) → user (via host-to-users).
+  # Shows the fleet scope tree with each edge labelled by the policy that
+  # created the child scope: fleet → environment (via fleet-to-envs) → host
+  # (via env-to-hosts) → user (via host-to-users). The label comes from
+  # den's `scopeSourcePolicy`; a capture without it draws unlabelled edges.
 
   toPolicyResolutionMapMermaidWith =
     {
@@ -539,30 +540,29 @@ let
     fleetCapture:
     let
       inherit (fleetCapture)
-        entries
         scopeParent
         scopeEntityKind
         ;
-
-      # Policy entries grouped by entity kind they fire at.
-      policyEntries = builtins.filter (e: e.isPolicyDispatch or false) entries;
-
-      # For each scope transition (parent → child), find the policy that
-      # fires at the parent scope and creates child scopes of the child's kind.
-      # The policy's `from` matches the parent's entity kind.
-      policiesAtKind =
-        kind: lib.unique (map (e: e.name) (builtins.filter (e: (e.from or null) == kind) policyEntries));
+      scopeSourcePolicy = fleetCapture.scopeSourcePolicy or { };
 
       allScopes = builtins.filter (s: s != "__unscoped" && s != "") (builtins.attrNames scopeParent);
+
+      # den roots the scope tree at the flake entity, whose scope id is
+      # `__unscoped`; drawing it connects its children (fleet, flake-system).
+      rootScope = "__unscoped";
+      drawnScopes =
+        lib.optional (builtins.any (s: scopeParent.${s} == rootScope) allScopes) rootScope ++ allScopes;
+      kindOf = s: if s == rootScope then "flake" else scopeEntityKind.${s} or null;
+      idOf = s: if s == rootScope then "flake" else sanitize s;
 
       # Build nodes with entity-kind-specific shapes.
       nodeDecl =
         scopeId:
         let
-          kind = scopeEntityKind.${scopeId} or null;
-          label = scopeLabel scopeEntityKind scopeId;
+          kind = kindOf scopeId;
+          label = if scopeId == rootScope then "flake" else scopeLabel scopeEntityKind scopeId;
           shape =
-            if kind == "fleet" then
+            if kind == "flake" || kind == "fleet" then
               "([\"${label}\"])"
             else if kind == "environment" then
               "{{\"${label}\"}}"
@@ -573,24 +573,21 @@ let
             else
               "[\"${label}\"]";
         in
-        "  ${sanitize scopeId}${shape}";
+        "  ${idOf scopeId}${shape}";
 
       # Build edges annotated with the policy that drives the transition.
       edgeDecl =
         scopeId:
         let
           parent = scopeParent.${scopeId} or null;
-          parentKind = if parent != null then scopeEntityKind.${parent} or null else null;
-          policies = if parentKind != null then policiesAtKind parentKind else [ ];
-          policyLabel = if policies != [ ] then lib.concatStringsSep ", " policies else null;
+          policyLabel = scopeSourcePolicy.${scopeId} or null;
           arrow = if policyLabel != null then "-->|${policyLabel}|" else "-->";
         in
-        lib.optional (
-          parent != null && parent != "__unscoped" && parent != ""
-        ) "  ${sanitize parent} ${arrow} ${sanitize scopeId}";
+        lib.optional (parent != null && parent != "") "  ${idOf parent} ${arrow} ${idOf scopeId}";
 
       # Color by entity kind.
       kindColors = {
+        flake = theme.rootFill;
         fleet = accent theme 5;
         environment = accent theme 6;
         host = accent theme 3;
@@ -600,11 +597,10 @@ let
       nodeStyle =
         scopeId:
         let
-          kind = scopeEntityKind.${scopeId} or null;
-          color = kindColors.${kind} or theme.nodeBg;
+          color = kindColors.${toString (kindOf scopeId)} or theme.nodeBg;
           text = theme.rootText;
         in
-        "  style ${sanitize scopeId} fill:${color},stroke:${color},color:${text}";
+        "  style ${idOf scopeId} fill:${color},stroke:${color},color:${text}";
     in
     renderMermaid
       {
@@ -612,11 +608,11 @@ let
         diagramKind = "graph TD";
       }
       (
-        map nodeDecl allScopes
+        map nodeDecl drawnScopes
         ++ [ "" ]
         ++ lib.concatMap edgeDecl allScopes
         ++ [ "" ]
-        ++ map nodeStyle allScopes
+        ++ map nodeStyle drawnScopes
       );
 
   toPolicyResolutionMapMermaid = toPolicyResolutionMapMermaidWith { };
@@ -728,15 +724,16 @@ let
       hostBlock =
         hostName: graph:
         let
+          # Class-bearing aspects and the organizers that include them.
           meaningful = builtins.filter (
             n:
-            (n.hasClass or false)
-            && !(n.isPolicyDispatch or false)
+            !(n.isPolicyDispatch or false)
             && !(lib.hasPrefix "<" n.label)
             && n.label != "host"
             && n.label != "user"
             && n.label != "default"
-          ) graph.nodes;
+          ) (util.ancestorClosureBy (n: n.hasClass or false) graph).nodes;
+          meaningfulIds = util.idSetOfNodes meaningful;
 
           nodeDecl =
             n:
@@ -753,18 +750,7 @@ let
 
           # Internal edges within this host.
           internalEdges = builtins.filter (
-            e:
-            let
-              fromNode = lib.findFirst (n: n.id == e.from) null graph.nodes;
-              toNode = lib.findFirst (n: n.id == e.to) null graph.nodes;
-            in
-            fromNode != null
-            && toNode != null
-            && (fromNode.hasClass or false)
-            && (toNode.hasClass or false)
-            && !(fromNode.isPolicyDispatch or false)
-            && !(toNode.isPolicyDispatch or false)
-            && (e.style or "normal") == "normal"
+            e: meaningfulIds ? ${e.from} && meaningfulIds ? ${e.to} && (e.style or "normal") == "normal"
           ) graph.edges;
 
           edgeDecl = e: "      ${prefixId hostName e.from} --> ${prefixId hostName e.to}";
@@ -796,19 +782,23 @@ let
         else
           [ "  subgraph ${sanitize "env_${env.name}"}[\"${env.name}\"]" ] ++ hostBlocks ++ [ "  end" ];
 
+      # Hosts with no environment above them (den's default tree hangs
+      # them off the per-system scope) render outside any env subgraph.
+      orphanHostNames = map hostNameFromScope flows.orphanHosts;
+      orphanBlocks = lib.concatMap (
+        name: if hostGraphs ? ${name} then hostBlock name hostGraphs.${name} else [ ]
+      ) orphanHostNames;
+
       # Pipe flow edges between hosts (cross-host only).
       pipeEdges = map (
         e: "  ${sanitize "host_${e.from}"} -->|${e.pipe}| ${sanitize "host_${e.to}"}"
       ) flows.flowEdges;
 
       # Host subgraph styles.
-      hostStyles = lib.concatMap (
-        env:
-        map (
-          h:
-          "  style ${sanitize "host_${h.name}"} fill:${theme.nodeBg},stroke:${theme.nodeBorder},stroke-width:1px"
-        ) env.hosts
-      ) flows.environments;
+      hostStyles = map (
+        name:
+        "  style ${sanitize "host_${name}"} fill:${theme.nodeBg},stroke:${theme.nodeBorder},stroke-width:1px"
+      ) (lib.concatMap (env: map (h: h.name) env.hosts) flows.environments ++ orphanHostNames);
 
       envStyles = map (
         env:
@@ -822,6 +812,7 @@ let
       }
       (
         lib.concatMap envBlock flows.environments
+        ++ orphanBlocks
         ++ [ "" ]
         ++ pipeEdges
         ++ [ "" ]

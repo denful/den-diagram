@@ -182,7 +182,7 @@ let
         if entity ? nodes then
           entity
         else
-          throw "entityEntries: entity must be a pre-computed graph (from hostContext, userContext, homeContext, or context).";
+          throw "entityEntries: entity must be a pre-computed graph (from projectScope or context).";
     in
     lib.concatMap (mkViewEntries pkgs dir name g) viewDefs
     ++ mkDagEntries pkgs rc dir name g
