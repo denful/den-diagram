@@ -395,6 +395,58 @@ in
         };
       };
 
+    # hasAspectPresent reads the pathsByClass that `context` attaches.
+    test-has-aspect-present-reads-context-paths =
+      let
+        g = diagram.context {
+          entries = devboxEntries;
+          name = "devbox";
+          pathsByClass.nixos = {
+            devbox = true;
+            server = true;
+          };
+        };
+      in
+      {
+        expr = map (n: n.label) (diagram.graph.hasAspectPresent { class = "nixos"; } g).nodes;
+        expected = [
+          "devbox"
+          "server"
+        ];
+      };
+
+    test-has-aspect-present-error-names-context = {
+      expr = (diagram.graph.hasAspectPresent { class = "nixos"; } devbox).nodes;
+      expectedError = {
+        type = "ThrownError";
+        msg = "diagram.context";
+      };
+    };
+
+    test-entity-entries-error-names-current-api = {
+      # Force the rendered source, the first place the entity is read.
+      expr =
+        (builtins.head (
+          diagram.export.entityEntries
+            {
+              pkgs.writeText = _: text: text;
+              rc = {
+                renderDense = diagram.renderers { };
+                mmdSourceToSvg = _: _: null;
+              };
+            }
+            {
+              entity = { };
+              name = "x";
+              dir = "x";
+              viewDefs = [ ];
+            }
+        )).drv;
+      expectedError = {
+        type = "ThrownError";
+        msg = "projectScope or context\\)";
+      };
+    };
   };
 
   context = {
