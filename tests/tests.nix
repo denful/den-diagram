@@ -152,6 +152,65 @@ let
     g: from: to:
     builtins.any (e: e.from == from && e.to == to) g.edges;
 
+  # Fleet capture shaped like fleet-demo: flake -> fleet -> environment ->
+  # host -> user, plus the per-system scope den always creates. ctxTrace is
+  # in the pipeline's emission order, which is not root-to-leaf.
+  fleetCapture = {
+    entries = [
+      (mkEntry {
+        name = "env-users";
+        isPolicyDispatch = true;
+        policyName = "env-users";
+        from = "host";
+      })
+      (mkEntry {
+        name = "collect-backends";
+        isPolicyDispatch = true;
+        policyName = "collect-backends";
+        from = "host";
+      })
+    ];
+    scopeParent = {
+      "system=x86_64-linux" = "__unscoped";
+      "fleet=fleet" = "__unscoped";
+      "environment=prod,fleet=fleet" = "fleet=fleet";
+      "environment=prod,fleet=fleet,host=lb" = "environment=prod,fleet=fleet";
+      "environment=prod,fleet=fleet,host=web" = "environment=prod,fleet=fleet";
+      "environment=prod,fleet=fleet,host=lb,user=alice" = "environment=prod,fleet=fleet,host=lb";
+      "environment=prod,fleet=fleet,host=web,user=alice" = "environment=prod,fleet=fleet,host=web";
+      "environment=prod,fleet=fleet,host=web,user=bob" = "environment=prod,fleet=fleet,host=web";
+    };
+    scopeEntityKind = {
+      "system=x86_64-linux" = "flake-system";
+      "fleet=fleet" = "fleet";
+      "environment=prod,fleet=fleet" = "environment";
+      "environment=prod,fleet=fleet,host=lb" = "host";
+      "environment=prod,fleet=fleet,host=web" = "host";
+      "environment=prod,fleet=fleet,host=lb,user=alice" = "user";
+      "environment=prod,fleet=fleet,host=web,user=alice" = "user";
+      "environment=prod,fleet=fleet,host=web,user=bob" = "user";
+    };
+    scopeSourcePolicy = {
+      "system=x86_64-linux" = "flake-to-systems";
+      "fleet=fleet" = "to-fleet";
+      "environment=prod,fleet=fleet" = "fleet-to-envs";
+      "environment=prod,fleet=fleet,host=lb" = "env-to-hosts";
+      "environment=prod,fleet=fleet,host=web" = "env-to-hosts";
+      "environment=prod,fleet=fleet,host=lb,user=alice" = "env-users";
+      "environment=prod,fleet=fleet,host=web,user=alice" = "env-users";
+      "environment=prod,fleet=fleet,host=web,user=bob" = "env-users";
+    };
+    scopedPipeEffects = { };
+    scopedClassImports = { };
+    ctxTrace = map (k: { key = k; }) [
+      "flake-system"
+      "environment"
+      "host"
+      "user"
+      "fleet"
+      "flake"
+    ];
+  };
 in
 {
   doc-review = {
@@ -300,6 +359,23 @@ in
       {
         expr = countLines (lib.hasPrefix "    participant os_to_host ") (diagram.toPolicySequenceMermaid g);
         expected = 1;
+      };
+
+    test-fleet-summary-chain-and-users =
+      let
+        out = diagram.text.fleetSummary fleetCapture;
+      in
+      {
+        expr = {
+          chain = hasLine "- Scope chain: flake → flake-system; flake → fleet → environment → host → user" out;
+          counts = hasLine "- **1** environments, **2** hosts, **2** users" out;
+          envRow = hasLine "| prod | lb, web | 2 | 2 |" out;
+        };
+        expected = {
+          chain = true;
+          counts = true;
+          envRow = true;
+        };
       };
 
   };

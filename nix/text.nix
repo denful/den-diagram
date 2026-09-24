@@ -41,7 +41,6 @@ let
         scopeEntityKind
         scopedPipeEffects
         scopedClassImports
-        ctxTrace
         ;
 
       allScopes = builtins.attrNames scopeEntityKind;
@@ -60,6 +59,9 @@ let
       hostsInEnv = envScope: builtins.filter (h: (scopeParent.${h} or null) == envScope) hostScopes;
 
       usersInHost = hostScope: builtins.filter (u: (scopeParent.${u} or null) == hostScope) userScopes;
+
+      # A user on four hosts is four scopes but one user.
+      userCount = scopes: toString (builtins.length (lib.unique (map (extractName "user") scopes)));
 
       # Policy entries.
       policyEntries = builtins.filter (e: e.isPolicyDispatch or false) entries;
@@ -103,8 +105,36 @@ let
 
       allPipeNames = lib.unique (lib.concatMap (h: h.produces ++ h.collects) pipesByHost);
 
-      # Scope chain from ctxTrace.
-      kindChain = lib.concatStringsSep " → " (lib.reverseList (map (e: e.key) ctxTrace));
+      # Scope chain, root to leaf, one path per branch of the kind tree.
+      # ctxTrace lists kinds in emission order, which is not tree order.
+      kindOf = s: if s == "__unscoped" then "flake" else scopeEntityKind.${s} or null;
+      kindEdges = lib.unique (
+        lib.concatMap (
+          s:
+          let
+            parentKind = kindOf (scopeParent.${s} or "");
+            kind = kindOf s;
+          in
+          lib.optional (parentKind != null && kind != null && parentKind != kind) {
+            from = parentKind;
+            to = kind;
+          }
+        ) (builtins.attrNames scopeParent)
+      );
+      kindPaths =
+        seen: kind:
+        let
+          children = lib.sort (a: b: a < b) (
+            map (e: e.to) (builtins.filter (e: e.from == kind && !builtins.elem e.to seen) kindEdges)
+          );
+        in
+        if children == [ ] then
+          [ [ kind ] ]
+        else
+          lib.concatMap (c: map (p: [ kind ] ++ p) (kindPaths (seen ++ [ c ]) c)) children;
+      kindChain = lib.concatMapStringsSep "; " (lib.concatStringsSep " → ") (
+        kindPaths [ "flake" ] "flake"
+      );
 
       # Environment table.
       envRows = map (
@@ -113,13 +143,12 @@ let
           eName = extractName "environment" envScope;
           hosts = hostsInEnv envScope;
           hostNames = map (extractName "host") hosts;
-          userCount = builtins.length (lib.concatMap usersInHost hosts);
         in
         [
           eName
           (lib.concatStringsSep ", " hostNames)
           (toString (builtins.length hosts))
-          (toString userCount)
+          (userCount (lib.concatMap usersInHost hosts))
         ]
       ) envScopes;
 
@@ -214,7 +243,7 @@ let
       ""
       "## Topology"
       ""
-      "- **${toString (builtins.length envScopes)}** environments, **${toString (builtins.length hostScopes)}** hosts, **${toString (builtins.length userScopes)}** users"
+      "- **${toString (builtins.length envScopes)}** environments, **${toString (builtins.length hostScopes)}** hosts, **${userCount userScopes}** users"
       "- Scope chain: ${kindChain}"
       "- Trace entries: ${toString (builtins.length entries)}"
       ""
