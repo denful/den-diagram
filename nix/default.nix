@@ -5,8 +5,8 @@
 { lib }:
 let
   util = import ./util.nix { inherit lib; };
-  colors = import ./colors.nix { inherit lib; };
   themes = import ./themes.nix { inherit lib; };
+  colors = import ./colors.nix { inherit lib themes; };
   renderUtil = import ./render-util.nix { inherit lib themes; };
   graphLib = import ./graph.nix { inherit lib util; };
   filtersLib = import ./filters { inherit lib util graphLib; };

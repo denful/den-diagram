@@ -5,7 +5,7 @@
 # around a small range of indices, while each individual name still gets
 # a stable-but-distinct selection. The result is scheme-faithful: every
 # node color is drawn from the user's chosen base16 palette.
-{ lib }:
+{ lib, themes }:
 let
   # Hex-digit → integer lookup.
   hexDigits = {
@@ -61,19 +61,8 @@ let
     builtins.elemAt pool index;
 
   # Back-compat shim: `nodeColor category name` without a theme argument
-  # falls back to a built-in github-light palette. Renderers that accept
-  # a theme should pass it through `nodeColorFor` explicitly.
-  defaultPool = [
-    "#fa4549" # red
-    "#e16f24" # orange
-    "#bf8700" # yellow
-    "#2da44e" # green
-    "#339D9B" # teal
-    "#218bff" # blue
-    "#a475f9" # purple
-    "#4d2d00" # brown
-  ];
-  nodeColor = category: name: nodeColorFor { accentPool = defaultPool; } category name;
+  # uses the default theme's accent pool.
+  nodeColor = nodeColorFor themes.defaultTheme;
 in
 {
   inherit nodeColor nodeColorFor;

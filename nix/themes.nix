@@ -243,7 +243,9 @@ let
     base0C = "#339D9B";
     base0D = "#218bff";
     base0E = "#a475f9";
-    base0F = "#4d2d00";
+    # Pink, not github's dark brown: accents carry dark base07 text, and
+    # #4d2d00 under it is unreadable (1.3:1).
+    base0F = "#e85aad";
   };
   defaultTheme = themeFromPalette defaultPalette;
 in

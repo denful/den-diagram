@@ -52,6 +52,35 @@ let
         ;
     };
 
+  # WCAG 2.x relative luminance / contrast ratio. Nix has no float pow, so
+  # x^0.4 is solved by Newton's method on y^5 = x^2.
+  contrast =
+    let
+      hexVal =
+        s:
+        lib.foldl' (
+          acc: c:
+          acc * 16 + lib.lists.findFirstIndex (d: d == c) 0 (lib.stringToCharacters "0123456789abcdef")
+        ) 0 (lib.stringToCharacters (lib.toLower s));
+      root5 =
+        x: lib.foldl' (y: _: y - (y * y * y * y * y - x) / (5.0 * y * y * y * y)) 1.0 (lib.range 1 40);
+      linear =
+        c8:
+        let
+          c = c8 / 255.0;
+          b = (c + 5.5e-2) / 1.055;
+        in
+        if c <= 4.045e-2 then c / 12.92 else b * b * root5 (b * b);
+      channel = hex: i: linear (hexVal (builtins.substring (1 + 2 * i) 2 hex) * 1.0);
+      luminance = hex: 0.2126 * channel hex 0 + 0.7152 * channel hex 1 + 7.22e-2 * channel hex 2;
+    in
+    a: b:
+    let
+      la = luminance a;
+      lb = luminance b;
+    in
+    (lib.max la lb + 5.0e-2) / (lib.min la lb + 5.0e-2);
+
   # A devbox-shaped trace: an organizer role with no class content of its
   # own, and a parametric aspect whose class content is traced on its
   # `host/resolve(<name>)` child rather than on the aspect itself.
@@ -161,6 +190,43 @@ in
           outEdge = true;
           policyDropped = true;
         };
+      };
+
+    # WCAG AA (4.5:1) for every fill the default theme puts text on.
+    test-default-theme-contrast =
+      let
+        t = diagram.defaultTheme;
+        pairs =
+          map (fill: {
+            inherit fill;
+            text = t.rootText;
+          }) t.accentPool
+          ++ [
+            {
+              fill = t.rootFill;
+              text = t.rootText;
+            }
+            {
+              fill = t.excludedFill;
+              text = t.excludedText;
+            }
+            {
+              fill = t.replacedFill;
+              text = t.replacedText;
+            }
+            {
+              fill = t.nodeBg;
+              text = t.nodeText;
+            }
+            {
+              fill = t.clusterBg;
+              text = t.foreground;
+            }
+          ];
+      in
+      {
+        expr = map (p: "${p.fill} on ${p.text}") (builtins.filter (p: contrast p.fill p.text < 4.5) pairs);
+        expected = [ ];
       };
 
   };
