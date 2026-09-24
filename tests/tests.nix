@@ -51,8 +51,100 @@ let
         to
         ;
     };
+
+  # A devbox-shaped trace: an organizer role with no class content of its
+  # own, and a parametric aspect whose class content is traced on its
+  # `host/resolve(<name>)` child rather than on the aspect itself.
+  devboxEntries = [
+    (mkEntry {
+      name = "devbox";
+      class = "nixos";
+      hasClass = true;
+    })
+    (mkEntry {
+      name = "workstation";
+      parent = "devbox";
+      class = "nixos";
+    })
+    (mkEntry {
+      name = "desktop";
+      parent = "workstation";
+      class = "nixos";
+      hasClass = true;
+    })
+    (mkEntry {
+      name = "server";
+      parent = "devbox";
+      class = "nixos";
+      hasClass = true;
+    })
+    (mkEntry {
+      name = "backup";
+      parent = "server";
+      class = "nixos";
+    })
+    (mkEntry {
+      name = "host/resolve(backup)";
+      parent = "backup";
+      class = "nixos";
+      hasClass = true;
+      isParametric = true;
+      fnArgNames = [ "host" ];
+    })
+    # An entity root resolves itself; that is not a parametric aspect.
+    (mkEntry {
+      name = "user";
+      parent = "devbox";
+      class = "nixos";
+    })
+    (mkEntry {
+      name = "user/resolve(user)";
+      parent = "user";
+      class = "nixos";
+      hasClass = true;
+    })
+    (mkEntry {
+      name = "os-to-host";
+      isPolicyDispatch = true;
+      policyName = "os-to-host";
+      from = "host";
+    })
+  ];
+  devbox = diagram.graph.build {
+    entries = devboxEntries;
+    rootName = "devbox";
+  };
+  nodeByLabel = g: label: lib.findFirst (n: n.label == label) null g.nodes;
+  hasEdge =
+    g: from: to:
+    builtins.any (e: e.from == from && e.to == to) g.edges;
+
 in
 {
+  doc-review = {
+    # A parametric aspect contributes class content through its resolve
+    # child; the slice must keep it and draw it as parametric.
+    test-class-slice-keeps-parametric-aspect =
+      let
+        backup = nodeByLabel (diagram.graph.classSlice "nixos" devbox) "backup";
+      in
+      {
+        expr = {
+          kept = backup != null;
+          shape = backup.shape or null;
+          aspectsShape = (nodeByLabel (diagram.graph.aspectsOnly devbox) "backup").shape;
+          entityRoot = (nodeByLabel devbox "user").hasClass;
+        };
+        expected = {
+          kept = true;
+          shape = "hexagon";
+          aspectsShape = "hexagon";
+          entityRoot = false;
+        };
+      };
+
+  };
+
   context = {
     # diagram.context builds a graph IR from trace entries
     test-basic-context =
