@@ -724,15 +724,16 @@ let
       hostBlock =
         hostName: graph:
         let
+          # Class-bearing aspects and the organizers that include them.
           meaningful = builtins.filter (
             n:
-            (n.hasClass or false)
-            && !(n.isPolicyDispatch or false)
+            !(n.isPolicyDispatch or false)
             && !(lib.hasPrefix "<" n.label)
             && n.label != "host"
             && n.label != "user"
             && n.label != "default"
-          ) graph.nodes;
+          ) (util.ancestorClosureBy (n: n.hasClass or false) graph).nodes;
+          meaningfulIds = util.idSetOfNodes meaningful;
 
           nodeDecl =
             n:
@@ -749,18 +750,7 @@ let
 
           # Internal edges within this host.
           internalEdges = builtins.filter (
-            e:
-            let
-              fromNode = lib.findFirst (n: n.id == e.from) null graph.nodes;
-              toNode = lib.findFirst (n: n.id == e.to) null graph.nodes;
-            in
-            fromNode != null
-            && toNode != null
-            && (fromNode.hasClass or false)
-            && (toNode.hasClass or false)
-            && !(fromNode.isPolicyDispatch or false)
-            && !(toNode.isPolicyDispatch or false)
-            && (e.style or "normal") == "normal"
+            e: meaningfulIds ? ${e.from} && meaningfulIds ? ${e.to} && (e.style or "normal") == "normal"
           ) graph.edges;
 
           edgeDecl = e: "      ${prefixId hostName e.from} --> ${prefixId hostName e.to}";

@@ -332,6 +332,31 @@ in
         };
       };
 
+    # An organizer between the host and class-bearing aspects stays in the
+    # fleet DAG, so the aspects under it are not cut loose.
+    test-fleet-dag-keeps-organizers =
+      let
+        out = diagram.toFleetDagMermaid {
+          fleetCapture = {
+            scopeParent."host=devbox" = "__unscoped";
+            scopeEntityKind."host=devbox" = "host";
+            scopedPipeEffects = { };
+            scopedClassImports = { };
+          };
+          hostGraphs = { inherit devbox; };
+        };
+      in
+      {
+        expr = {
+          node = hasLine "      devbox__workstation[\"workstation\"]" out;
+          edge = hasLine "      devbox__workstation --> devbox__desktop" out;
+        };
+        expected = {
+          node = true;
+          edge = true;
+        };
+      };
+
     # The same policy firing in two scopes is one participant.
     test-policy-sequence-unique-participants =
       let
