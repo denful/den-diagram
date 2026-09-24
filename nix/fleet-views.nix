@@ -527,9 +527,10 @@ let
 
   # --- View 4: Policy entity resolution map ---
   #
-  # Shows the fleet scope tree annotated with which policies drive each
-  # entity transition: fleet → environment (via fleet-to-envs) → host
-  # (via env-to-hosts) → user (via host-to-users).
+  # Shows the fleet scope tree with each edge labelled by the policy that
+  # created the child scope: fleet → environment (via fleet-to-envs) → host
+  # (via env-to-hosts) → user (via host-to-users). The label comes from
+  # den's `scopeSourcePolicy`; a capture without it draws unlabelled edges.
 
   toPolicyResolutionMapMermaidWith =
     {
@@ -539,19 +540,10 @@ let
     fleetCapture:
     let
       inherit (fleetCapture)
-        entries
         scopeParent
         scopeEntityKind
         ;
-
-      # Policy entries grouped by entity kind they fire at.
-      policyEntries = builtins.filter (e: e.isPolicyDispatch or false) entries;
-
-      # For each scope transition (parent → child), find the policy that
-      # fires at the parent scope and creates child scopes of the child's kind.
-      # The policy's `from` matches the parent's entity kind.
-      policiesAtKind =
-        kind: lib.unique (map (e: e.name) (builtins.filter (e: (e.from or null) == kind) policyEntries));
+      scopeSourcePolicy = fleetCapture.scopeSourcePolicy or { };
 
       allScopes = builtins.filter (s: s != "__unscoped" && s != "") (builtins.attrNames scopeParent);
 
@@ -580,9 +572,7 @@ let
         scopeId:
         let
           parent = scopeParent.${scopeId} or null;
-          parentKind = if parent != null then scopeEntityKind.${parent} or null else null;
-          policies = if parentKind != null then policiesAtKind parentKind else [ ];
-          policyLabel = if policies != [ ] then lib.concatStringsSep ", " policies else null;
+          policyLabel = scopeSourcePolicy.${scopeId} or null;
           arrow = if policyLabel != null then "-->|${policyLabel}|" else "-->";
         in
         lib.optional (

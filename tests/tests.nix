@@ -378,6 +378,23 @@ in
         };
       };
 
+    # An edge is labelled with the policy that created the child scope, not
+    # with every policy that fired at the parent.
+    test-policy-map-labels-creating-policy =
+      let
+        out = diagram.toPolicyResolutionMapMermaid fleetCapture;
+      in
+      {
+        expr = {
+          userEdge = hasLine "  environment_prod_fleet_fleet_host_web -->|env-users| environment_prod_fleet_fleet_host_web_user_bob" out;
+          otherPolicy = lib.hasInfix "collect-backends" out;
+        };
+        expected = {
+          userEdge = true;
+          otherPolicy = false;
+        };
+      };
+
   };
 
   context = {
