@@ -796,19 +796,23 @@ let
         else
           [ "  subgraph ${sanitize "env_${env.name}"}[\"${env.name}\"]" ] ++ hostBlocks ++ [ "  end" ];
 
+      # Hosts with no environment above them (den's default tree hangs
+      # them off the per-system scope) render outside any env subgraph.
+      orphanHostNames = map hostNameFromScope flows.orphanHosts;
+      orphanBlocks = lib.concatMap (
+        name: if hostGraphs ? ${name} then hostBlock name hostGraphs.${name} else [ ]
+      ) orphanHostNames;
+
       # Pipe flow edges between hosts (cross-host only).
       pipeEdges = map (
         e: "  ${sanitize "host_${e.from}"} -->|${e.pipe}| ${sanitize "host_${e.to}"}"
       ) flows.flowEdges;
 
       # Host subgraph styles.
-      hostStyles = lib.concatMap (
-        env:
-        map (
-          h:
-          "  style ${sanitize "host_${h.name}"} fill:${theme.nodeBg},stroke:${theme.nodeBorder},stroke-width:1px"
-        ) env.hosts
-      ) flows.environments;
+      hostStyles = map (
+        name:
+        "  style ${sanitize "host_${name}"} fill:${theme.nodeBg},stroke:${theme.nodeBorder},stroke-width:1px"
+      ) (lib.concatMap (env: map (h: h.name) env.hosts) flows.environments ++ orphanHostNames);
 
       envStyles = map (
         env:
@@ -822,6 +826,7 @@ let
       }
       (
         lib.concatMap envBlock flows.environments
+        ++ orphanBlocks
         ++ [ "" ]
         ++ pipeEdges
         ++ [ "" ]

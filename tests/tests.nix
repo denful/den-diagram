@@ -52,6 +52,9 @@ let
         ;
     };
 
+  lines = s: lib.splitString "\n" s;
+  hasLine = l: s: builtins.elem l (lines s);
+
   # WCAG 2.x relative luminance / contrast ratio. Nix has no float pow, so
   # x^0.4 is solved by Newton's method on y^5 = x^2.
   contrast =
@@ -227,6 +230,46 @@ in
       {
         expr = map (p: "${p.fill} on ${p.text}") (builtins.filter (p: contrast p.fill p.text < 4.5) pairs);
         expected = [ ];
+      };
+
+    # Without environments, hosts hang straight off the per-system scope;
+    # the fleet DAG must still draw them.
+    test-fleet-dag-without-environments =
+      let
+        out = diagram.toFleetDagMermaid {
+          fleetCapture = {
+            scopeParent = {
+              "system=x" = "__unscoped";
+              "host=laptop,system=x" = "system=x";
+            };
+            scopeEntityKind = {
+              "system=x" = "flake-system";
+              "host=laptop,system=x" = "host";
+            };
+            scopedPipeEffects = { };
+            scopedClassImports = { };
+          };
+          hostGraphs.laptop = diagram.graph.build {
+            entries = [
+              (mkEntry {
+                name = "laptop";
+                class = "nixos";
+                hasClass = true;
+              })
+            ];
+            rootName = "laptop";
+          };
+        };
+      in
+      {
+        expr = {
+          subgraph = hasLine "    subgraph host_laptop[\"laptop\"]" out;
+          node = hasLine "      laptop__laptop[\"laptop\"]" out;
+        };
+        expected = {
+          subgraph = true;
+          node = true;
+        };
       };
 
   };
