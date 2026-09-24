@@ -54,6 +54,7 @@ let
 
   lines = s: lib.splitString "\n" s;
   hasLine = l: s: builtins.elem l (lines s);
+  countLines = pred: s: builtins.length (builtins.filter pred (lines s));
 
   # WCAG 2.x relative luminance / contrast ratio. Nix has no float pow, so
   # x^0.4 is solved by Newton's method on y^5 = x^2.
@@ -270,6 +271,35 @@ in
           subgraph = true;
           node = true;
         };
+      };
+
+    # The same policy firing in two scopes is one participant.
+    test-policy-sequence-unique-participants =
+      let
+        g = diagram.graph.build {
+          entries = [
+            (mkEntry { name = "laptop"; })
+            (mkEntry {
+              name = "os-to-host";
+              isPolicyDispatch = true;
+              policyName = "os-to-host";
+              from = "host";
+              entityInstance = "host:laptop";
+            })
+            (mkEntry {
+              name = "os-to-host";
+              isPolicyDispatch = true;
+              policyName = "os-to-host";
+              from = "user";
+              entityInstance = "user:alice";
+            })
+          ];
+          rootName = "laptop";
+        };
+      in
+      {
+        expr = countLines (lib.hasPrefix "    participant os_to_host ") (diagram.toPolicySequenceMermaid g);
+        expected = 1;
       };
 
   };
