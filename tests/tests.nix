@@ -143,6 +143,26 @@ in
         };
       };
 
+    # An organizer aspect (includes only) is still user-declared.
+    test-user-declared-keeps-organizer =
+      let
+        g = diagram.graph.userDeclaredOnly (diagram.graph.aspectsOnly devbox);
+      in
+      {
+        expr = {
+          workstation = nodeByLabel g "workstation" != null;
+          inEdge = hasEdge g "devbox" "workstation";
+          outEdge = hasEdge g "workstation" "desktop";
+          policyDropped = nodeByLabel g "os-to-host" == null;
+        };
+        expected = {
+          workstation = true;
+          inEdge = true;
+          outEdge = true;
+          policyDropped = true;
+        };
+      };
+
   };
 
   context = {
